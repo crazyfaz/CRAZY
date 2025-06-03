@@ -6,7 +6,7 @@ require('dotenv').config();
 // CRAZY bot's Application ID
 const CLIENT_ID = '1376557152814235688';
 
-// Your Discord Server (Guild) ID
+// Your testing Discord server (for instant command updates)
 const GUILD_ID = '1367900836801286244';
 
 // Bot token from .env
@@ -22,19 +22,27 @@ for (const file of commandFiles) {
   commands.push(command.data.toJSON());
 }
 
-// Register commands in your server (instant deployment)
+// Create REST client
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
+// Register globally and for your guild
 (async () => {
   try {
-    console.log('🔄 Refreshing guild (/) commands...');
+    console.log('🔄 Registering slash commands...');
 
+    // 1. Global (available to everyone, but may take 1 hour to appear)
+    await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      { body: commands }
+    );
+    console.log('✅ Global commands registered.');
+
+    // 2. Guild (for instant updates/testing)
     await rest.put(
       Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
-      { body: commands },
+      { body: commands }
     );
-
-    console.log('✅ Successfully reloaded guild (/) commands.');
+    console.log(`✅ Guild commands registered for ${GUILD_ID}.`);
   } catch (error) {
     console.error('❌ Error registering commands:', error);
   }
