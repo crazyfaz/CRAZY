@@ -3,23 +3,22 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Create the Discord client with necessary intents
+// Initialize the Discord bot client
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Store commands in a Collection
+// Create a Collection to store commands
 client.commands = new Collection();
 
-// Path to commands folder
+// Load all command files from src/commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Load all command files
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   client.commands.set(command.data.name, command);
 }
 
-// Bot ready event
+// When bot is ready
 client.once('ready', () => {
   console.log(`✅ CRAZY is online as ${client.user.tag}`);
 });
@@ -42,5 +41,5 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Login using token from .env
+// Login to Discord
 client.login(process.env.TOKEN);
