@@ -10,8 +10,9 @@ module.exports = {
     const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
     await interaction.reply({
-      content: `**CRAZY Bot**  
-> **Hero:** Shenji  
+      content: `**CRAZY**  
+> **Heroes**  
+> **Shenji**  
 > Gear recommendations based on the rarity (level)
 
 ---
@@ -37,7 +38,7 @@ module.exports = {
 ---
 
 *Date Updated: ${formattedDate}*`,
-      ephemeral: false
+      ephemeral: false,
     });
   }
 };
