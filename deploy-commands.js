@@ -3,11 +3,11 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Your CRAZY bot's Application ID
+// CRAZY bot's Application ID
 const CLIENT_ID = '1376557152814235688';
 
-// Your Discord Server (Guild) ID — replace this!
-const GUILD_ID = 'YOUR_GUILD_ID_HERE';
+// Your Discord Server (Guild) ID
+const GUILD_ID = '1367900836801286244';
 
 // Bot token from .env
 const TOKEN = process.env.TOKEN;
@@ -22,7 +22,7 @@ for (const file of commandFiles) {
   commands.push(command.data.toJSON());
 }
 
-// Register commands in your server (fast deployment)
+// Register commands in your server (instant deployment)
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
