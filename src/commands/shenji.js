@@ -10,9 +10,8 @@ module.exports = {
     const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
     await interaction.reply({
-      content: `**DRAKE**  
-> **Heroes**  
-> **Shenji**  
+      content: `**CRAZY Bot**  
+> **Hero:** Shenji  
 > Gear recommendations based on the rarity (level)
 
 ---
