@@ -4,7 +4,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('shenji')
     .setDescription('Get Shenji gear set recommendations'),
-  
+
   async execute(interaction) {
     const today = new Date();
     const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
@@ -41,4 +41,3 @@ module.exports = {
       ephemeral: false
     });
   }
-}
