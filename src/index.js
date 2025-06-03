@@ -3,13 +3,10 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Initialize the Discord bot client
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// Create a Collection to store commands
 client.commands = new Collection();
 
-// Load all command files from src/commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -18,12 +15,10 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
 }
 
-// When bot is ready
 client.once('ready', () => {
-  console.log(`✅ CRAZY is online as ${client.user.tag}`);
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
-// Handle command interactions
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -35,11 +30,10 @@ client.on('interactionCreate', async interaction => {
   } catch (error) {
     console.error(error);
     await interaction.reply({
-      content: '⚠️ An error occurred while executing this command!',
-      ephemeral: true
+      content: 'There was an error while executing this command!',
+      ephemeral: true,
     });
   }
 });
 
-// Login to Discord
 client.login(process.env.TOKEN);
