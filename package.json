@@ -1,7 +1,7 @@
 {
-  "name": "drake-discord-bot",
+  "name": "crazy-discord-bot",
   "version": "1.0.0",
-  "description": "Bullet Echo Gear Guide Bot",
+  "description": "CRAZY - Bullet Echo Gear Guide Bot",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -11,3 +11,4 @@
     "discord.js": "^14.11.0",
     "dotenv": "^16.3.1"
   }
+}
