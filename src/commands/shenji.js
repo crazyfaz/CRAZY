@@ -3,42 +3,18 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('shenji')
-    .setDescription('Get Shenji gear set recommendations'),
-
+    .setDescription('Get gear guide for Shenji'),
   async execute(interaction) {
-    const today = new Date();
-    const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
-
     await interaction.reply({
-      content: `**CRAZY**  
-> **Heroes**  
-> **Shenji**  
-> Gear recommendations based on the rarity (level)
+      content: `🛡️ **Shenji Gear Guide**:
+      
+- Main Weapon: *Laser Rifle* 🔫  
+- Armor: *Kinetic Armor* 🛡️  
+- Boots: *Silent Boots* 👟  
+- Chip: *Auto Heal* 💉
 
----
-
-**More Builds**  
-**[YouTube Guide]** [Click Here](https://youtube.com) *(placeholder)*
-
----
-
-### **BUILD A** – *Best Starter Build for Beginners*  
-> ![Build A](https://i.imgur.com/VRWQnrl.png)
-
----
-
-### **BUILD B** – *Good Rare Gears for Advanced Play*  
-> ![Build B](https://i.imgur.com/YtnPmKH.png)
-
----
-
-### **BUILD C** – *Bonuses for Extremely High Performance*  
-> ![Build C](https://i.imgur.com/Fa7XQLM.png)
-
----
-
-*Date Updated: ${formattedDate}*`,
+Type /shenji anytime for this guide.`,
       ephemeral: false,
     });
-  }
-};
+  },
+}
