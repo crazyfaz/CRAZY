@@ -5,6 +5,6 @@ module.exports = {
     .setName('shenji')
     .setDescription('Sends CRAZY Shenji guide.'),
   async execute(interaction) {
-    await interaction.reply('Here is the CRAZY Shenji gear guide!');
+    await interaction.reply('🛡️ Here is the CRAZY Shenji gear guide!');
   }
 };
