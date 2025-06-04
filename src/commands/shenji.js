@@ -3,18 +3,8 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('shenji')
-    .setDescription('Get gear guide for Shenji'),
+    .setDescription('Sends CRAZY Shenji guide.'),
   async execute(interaction) {
-    await interaction.reply({
-      content: `🛡️ **Shenji Gear Guide**:
-      
-- Main Weapon: *Laser Rifle* 🔫  
-- Armor: *Kinetic Armor* 🛡️  
-- Boots: *Silent Boots* 👟  
-- Chip: *Auto Heal* 💉
-
-Type /shenji anytime for this guide.`,
-      ephemeral: false,
-    });
-  },
-}
+    await interaction.reply('Here is the CRAZY Shenji gear guide!');
+  }
+};
