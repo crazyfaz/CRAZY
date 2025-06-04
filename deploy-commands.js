@@ -3,10 +3,6 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const CLIENT_ID = '1376557152814235688';
-const GUILD_ID = '1367900836801286244';
-const TOKEN = process.env.TOKEN;
-
 const commands = [];
 const commandsPath = path.join(__dirname, 'src', 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -16,17 +12,19 @@ for (const file of commandFiles) {
   commands.push(command.data.toJSON());
 }
 
-const rest = new REST({ version: '10' }).setToken(TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 (async () => {
   try {
-    console.log('🔄 Deploying commands to guild...');
+    console.log('🔄 Refreshing application (/) commands...');
+
     await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
     );
-    console.log('✅ Slash commands deployed to guild.');
+
+    console.log('✅ Successfully reloaded application (/) commands.');
   } catch (error) {
-    console.error('❌ Failed to deploy commands:', error);
+    console.error(error);
   }
 })();
