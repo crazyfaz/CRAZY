@@ -7,6 +7,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.commands = new Collection();
 
+// Load all commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -38,10 +39,10 @@ client.on('interactionCreate', async interaction => {
 
 client.login(process.env.TOKEN);
 
-// 👇 Keeps bot alive on Render free plan by faking a web server
+// === Add Express web server to keep Render free plan alive ===
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (_req, res) => res.send('Bot is running!'));
+app.get('/', (req, res) => res.send('CRAZY bot is alive!'));
 app.listen(PORT, () => console.log(`🌐 Web server listening on port ${PORT}`));
