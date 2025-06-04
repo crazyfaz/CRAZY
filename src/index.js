@@ -1,6 +1,7 @@
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 require('dotenv').config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -36,12 +37,10 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-client.login(process.env.TOKEN);
-
-// 👇 Keep Render service alive
-const express = require('express');
+// Keep alive for Render
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`🌐 Web server listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
+
+client.login(process.env.TOKEN);
