@@ -68,15 +68,15 @@ async function fetchLatest(channelId) {
 Thumbnail: ${thumbnail}
     `);
 
-    // 📢 Post to Discord
-    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+    // Fetch the Discord channel fresh (fix for "channel not found")
+    const channel = await client.channels.fetch(process.env.DISCORD_CHANNEL_ID).catch(() => null);
     if (channel) {
-      channel.send({
+      await channel.send({
         content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
         embeds: [
           {
-            title: title,
-            url: url,
+            title,
+            url,
             image: { url: thumbnail },
             color: 0xff0000,
           },
@@ -86,7 +86,7 @@ Thumbnail: ${thumbnail}
       console.log('❌ Discord channel not found.');
     }
   } catch (err) {
-    console.error('⚠️ Failed to fetch latest video:', err.message);
+    console.error('⚠️ Failed to fetch latest video or send message:', err.message);
   }
 }
 
