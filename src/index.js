@@ -19,7 +19,7 @@ for (const file of commandFiles) {
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  startYouTubeCheck(); // start YouTube checker after bot is ready
+  startYouTubeCheck(); // Start YouTube checker after bot is ready
 });
 
 client.on('interactionCreate', async interaction => {
@@ -41,8 +41,8 @@ client.on('interactionCreate', async interaction => {
 
 // === YouTube Video Notifier ===
 let lastVideoId = null;
-const YT_CHANNEL_ID = 'YOUR_YOUTUBE_CHANNEL_ID'; // Replace this
-const DISCORD_CHANNEL_ID = 'YOUR_DISCORD_CHANNEL_ID'; // Replace this
+const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g'; // ✅ Your real YouTube channel ID
+const DISCORD_CHANNEL_ID = 'YOUR_DISCORD_CHANNEL_ID'; // 🔁 Replace with your Discord text channel ID
 
 async function checkYouTube() {
   const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
@@ -61,19 +61,22 @@ async function checkYouTube() {
 
     if (videoId !== lastVideoId) {
       lastVideoId = videoId;
-      const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
+      const channel = await client.channels.fetch(1367902502892081323);
       if (channel) {
         channel.send(`🎬 **New YouTube Video Uploaded!**\n📌 **${videoTitle}**\n▶️ ${videoUrl}`);
+        console.log(`📢 Sent ping for: ${videoTitle}`);
       }
+    } else {
+      console.log('⏱️ No new video.');
     }
   } catch (err) {
-    console.error('YouTube check failed:', err);
+    console.error('YouTube check failed:', err.message);
   }
 }
 
 function startYouTubeCheck() {
   checkYouTube(); // Initial check
-  setInterval(checkYouTube, 5 * 60 * 1000); // Repeat every 5 min
+  setInterval(checkYouTube, 5 * 60 * 1000); // Check every 5 minutes
 }
 
 // === Keep alive for Render ===
@@ -82,4 +85,4 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN)
