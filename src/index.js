@@ -9,19 +9,21 @@ require('dotenv').config();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
+// Load commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   client.commands.set(command.data.name, command);
 }
 
+// On bot ready
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  startYouTubeCheck(); // Start YouTube checker after bot is ready
+  startYouTubeCheck();
 });
 
+// Handle commands
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -39,20 +41,29 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// === YouTube Video Notifier ===
+// === YouTube Notifier ===
 let lastVideoId = null;
-const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g'; // ✅ Your real YouTube channel ID
-const DISCORD_CHANNEL_ID = 'YOUR_DISCORD_CHANNEL_ID'; // 🔁 Replace with your Discord text channel ID
+const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g';
+const DISCORD_CHANNEL_ID = '1367902502892081323';
 
 async function checkYouTube() {
   const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/1.0)'
+      }
+    });
+
     const text = await res.text();
+
+    if (!text.startsWith('<?xml')) {
+      throw new Error('Invalid response from YouTube (not XML)');
+    }
+
     const data = await parseStringPromise(text);
     const latest = data.feed.entry?.[0];
-
     if (!latest) return;
 
     const videoId = latest['yt:videoId'][0];
@@ -61,7 +72,7 @@ async function checkYouTube() {
 
     if (videoId !== lastVideoId) {
       lastVideoId = videoId;
-      const channel = await client.channels.fetch(1367902502892081323);
+      const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
       if (channel) {
         channel.send(`🎬 **New YouTube Video Uploaded!**\n📌 **${videoTitle}**\n▶️ ${videoUrl}`);
         console.log(`📢 Sent ping for: ${videoTitle}`);
@@ -75,14 +86,15 @@ async function checkYouTube() {
 }
 
 function startYouTubeCheck() {
-  checkYouTube(); // Initial check
-  setInterval(checkYouTube, 5 * 60 * 1000); // Check every 5 minutes
+  checkYouTube();
+  setInterval(checkYouTube, 5 * 60 * 1000); // every 5 mins
 }
 
-// === Keep alive for Render ===
+// === Render keep-alive ===
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
 
+// Login
 client.login(process.env.TOKEN)
