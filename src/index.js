@@ -1,20 +1,32 @@
 const express = require('express');
 const { google } = require('googleapis');
+const { Client, GatewayIntentBits } = require('discord.js');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 👻 Fake web server (keeps Render alive)
+// 🌐 Keep Render service alive
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
-
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// 🔧 YouTube API setup
+// 🎮 Discord Client Setup
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
+
+client.once('ready', () => {
+  console.log(`🤖 Logged in as ${client.user.tag}`);
+});
+
+// 🔐 Login with Discord token
+client.login(process.env.DISCORD_TOKEN);
+
+// 📺 YouTube API setup
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -22,7 +34,7 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// 📺 Fetch latest video
+// 📤 Function to fetch latest video
 async function fetchLatest(channelId) {
   try {
     const response = await youtube.search.list({
@@ -55,12 +67,30 @@ async function fetchLatest(channelId) {
 👉 Watch now: ${url}
 Thumbnail: ${thumbnail}
     `);
+
+    // 📢 Post to Discord
+    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+    if (channel) {
+      channel.send({
+        content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
+        embeds: [
+          {
+            title: title,
+            url: url,
+            image: { url: thumbnail },
+            color: 0xff0000,
+          },
+        ],
+      });
+    } else {
+      console.log('❌ Discord channel not found.');
+    }
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video:', err.message);
   }
 }
 
-// 🔍 Get Channel ID from Handle
+// 🔍 Resolve YouTube channel ID from handle
 async function getChannelId(handle) {
   try {
     const res = await youtube.search.list({
@@ -77,7 +107,7 @@ async function getChannelId(handle) {
   }
 }
 
-// 🚀 Start the bot
+// 🚀 Bot start logic
 (async () => {
   const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
@@ -89,9 +119,9 @@ async function getChannelId(handle) {
 
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
-  await fetchLatest(channelId); // Check once at start
+  await fetchLatest(channelId); // Check immediately
 
   setInterval(() => {
     fetchLatest(channelId);
-  }, 10 * 60 * 1000); // Every 10 mins
+  }, 10 * 60 * 1000); // Check every 10 mins
 })();
