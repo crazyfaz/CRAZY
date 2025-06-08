@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const fetch = require('node-fetch');
-const { parseStringPromise } = require('xml2js');
 require('dotenv').config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -43,32 +42,22 @@ client.on('interactionCreate', async interaction => {
 
 // === YouTube Notifier ===
 let lastVideoId = null;
-const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g';
-const DISCORD_CHANNEL_ID = '1367902502892081323';
+const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g'; // ✅ Your channel ID
+const DISCORD_CHANNEL_ID = '1367902502892081323'; // ✅ Your Discord channel ID
 
 async function checkYouTube() {
-  const url = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CHANNEL_ID}`;
+  const url = `https://yt.lemnoslife.com/channels?part=videos&id=${YT_CHANNEL_ID}`;
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DiscordBot/1.0)'
-      }
-    });
+    const res = await fetch(url);
+    const data = await res.json();
 
-    const text = await res.text();
-
-    if (!text.startsWith('<?xml')) {
-      throw new Error('Invalid response from YouTube (not XML)');
-    }
-
-    const data = await parseStringPromise(text);
-    const latest = data.feed.entry?.[0];
+    const latest = data.items?.[0]?.videos?.[0];
     if (!latest) return;
 
-    const videoId = latest['yt:videoId'][0];
-    const videoTitle = latest.title[0];
-    const videoUrl = latest.link[0].$.href;
+    const videoId = latest.videoId;
+    const videoTitle = latest.title;
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     if (videoId !== lastVideoId) {
       lastVideoId = videoId;
@@ -87,7 +76,7 @@ async function checkYouTube() {
 
 function startYouTubeCheck() {
   checkYouTube();
-  setInterval(checkYouTube, 5 * 60 * 1000); // every 5 mins
+  setInterval(checkYouTube, 5 * 60 * 1000); // every 5 minutes
 }
 
 // === Render keep-alive ===
@@ -97,4 +86,4 @@ app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
 
 // Login
-client.login(process.env.TOKEN)
+client.login(process.env.TOKEN);
