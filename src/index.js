@@ -1,114 +1,85 @@
+const express = require('express');
 const { google } = require('googleapis');
-const fs = require('fs');
+require('dotenv').config();
 
-// YouTube setup
-const youtube = google.youtube({
-  version: 'v3',
-  auth: 'AIzaSyAzbB6FVre9cIud-UXrP4EFahHrOHg4G8k', // Your API key
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Fake web server for Render (keeps it alive)
+app.get('/', (req, res) => {
+  res.send('Bot is running!');
 });
 
-const handle = '@crazyechoo'; // your YouTube handle
-const CHECK_INTERVAL = 60 * 1000; // check every 60 seconds
-const lastVideoFile = 'lastVideo.json';
+app.listen(PORT, () => {
+  console.log(`✅ Web server running on port ${PORT}`);
+});
+
+// ---------------- YouTube Bot Code ----------------
+const youtube = google.youtube({
+  version: 'v3',
+  auth: process.env.YOUTUBE_API_KEY,
+});
+
 let lastVideoId = null;
 
-// Load last known video ID
-if (fs.existsSync(lastVideoFile)) {
-  try {
-    const data = fs.readFileSync(lastVideoFile);
-    lastVideoId = JSON.parse(data).videoId;
-  } catch (err) {
-    console.error("Failed to read last video file:", err);
+async function fetchLatest(channelId) {
+  const response = await youtube.search.list({
+    part: ['snippet'],
+    channelId,
+    maxResults: 1,
+    order: 'date',
+    type: ['video'],
+  });
+
+  const video = response.data.items[0];
+  if (!video) {
+    console.log('❌ No video found.');
+    return;
   }
-}
 
-// Helper: get channel ID from handle
-async function getChannelIdFromHandle(handle) {
-  try {
-    const response = await youtube.search.list({
-      part: ['snippet'],
-      q: handle,
-      type: ['channel'],
-      maxResults: 1,
-    });
-    const channels = response.data.items;
-    if (channels.length === 0) {
-      throw new Error(`No channel found for handle: ${handle}`);
-    }
-    return channels[0].snippet.channelId;
-  } catch (error) {
-    console.error('Error fetching channel ID:', error.message);
-    throw error;
+  if (video.id.videoId === lastVideoId) {
+    console.log('🔁 No new video.');
+    return;
   }
-}
 
-// Announce latest video
-async function announceLatestVideo(channelId) {
-  try {
-    const response = await youtube.search.list({
-      part: ['snippet'],
-      channelId: channelId,
-      maxResults: 1,
-      order: 'date',
-      type: ['video'],
-    });
+  lastVideoId = video.id.videoId;
+  const title = video.snippet.title;
+  const url = `https://www.youtube.com/watch?v=${lastVideoId}`;
+  const thumbnail = video.snippet.thumbnails.high.url;
 
-    if (!response.data.items || response.data.items.length === 0) {
-      console.log('No videos found.');
-      return;
-    }
-
-    const video = response.data.items[0];
-    const videoId = video.id.videoId;
-
-    if (videoId === lastVideoId) {
-      console.log('🔁 No new video.');
-      return;
-    }
-
-    const title = video.snippet.title;
-    const thumbnail = video.snippet.thumbnails.high.url;
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-    const announcement = `
+  console.log(`
 🎬 **New Video Alert!**
-
 **${title}**
-
-👉 Watch now: ${videoUrl}
-
+👉 Watch now: ${url}
 Thumbnail: ${thumbnail}
-    `;
-
-    console.log(announcement);
-
-    // Save last video ID to file
-    lastVideoId = videoId;
-    fs.writeFileSync(lastVideoFile, JSON.stringify({ videoId }));
-
-  } catch (error) {
-    console.error('❌ Error announcing video:', error.message);
-  }
+  `);
 }
 
-// Main loop
-async function startBot() {
-  const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+async function getChannelId(handle) {
+  const res = await youtube.search.list({
+    part: ['snippet'],
+    q: handle,
+    type: ['channel'],
+    maxResults: 1,
+  });
 
-  try {
-    const channelId = await getChannelIdFromHandle(cleanHandle);
-    console.log(`Resolved channel ID: ${channelId}`);
-
-    // Run once immediately, then every minute
-    await announceLatestVideo(channelId);
-    setInterval(() => announceLatestVideo(channelId), CHECK_INTERVAL);
-
-    // Keep alive
-    process.stdin.resume();
-
-  } catch (error) {
-    console.error('🔥 Fatal error in bot:', error.message);
-  }
+  return res.data.items[0]?.snippet.channelId;
 }
 
-startBot();
+(async () => {
+  const handle = '@crazyechoo';
+  const channelId = await getChannelId(handle.replace('@', ''));
+
+  if (!channelId) {
+    console.error('❌ Could not find channel.');
+    return;
+  }
+
+  console.log(`✅ Monitoring channel ID: ${channelId}`);
+
+  await fetchLatest(channelId); // Run once now
+
+  setInterval(() => {
+    fetchLatest(channelId);     // Then every 10 mins
+  }, 10 * 60 * 1000);
+})();
