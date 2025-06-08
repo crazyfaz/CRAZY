@@ -123,5 +123,5 @@ async function getChannelId(handle) {
 
   setInterval(() => {
     fetchLatest(channelId);
-  }, 1 * 60 * 1000); // Check every 1 mins
+  }, 15 * 60 * 1000); // Check every 15 mins
 })();
