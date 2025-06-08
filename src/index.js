@@ -1,89 +1,85 @@
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-const express = require('express');
-const fetch = require('node-fetch');
-require('dotenv').config();
+const { google } = require('googleapis');
+const youtube = google.youtube({
+  version: 'v3',
+  auth: 'AIzaSyAzbB6FVre9cIud-UXrP4EFahHrOHg4G8k', // Your new API key
+});
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-client.commands = new Collection();
-
-// Load commands
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
+// Helper function to get channel ID from handle
+async function getChannelIdFromHandle(handle) {
+  try {
+    const response = await youtube.search.list({
+      part: ['snippet'],
+      q: handle,
+      type: ['channel'],
+      maxResults: 1,
+    });
+    const channels = response.data.items;
+    if (channels.length === 0) {
+      throw new Error(`No channel found for handle: ${handle}`);
+    }
+    return channels[0].snippet.channelId;
+  } catch (error) {
+    console.error('Error fetching channel ID:', error);
+    throw error;
+  }
 }
 
-// On bot ready
-client.once('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-  startYouTubeCheck();
-});
-
-// Handle commands
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
+// Function to announce the latest video
+async function announceLatestVideo(channelId) {
   try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({
-      content: 'There was an error while executing this command!',
-      ephemeral: true,
+    const response = await youtube.search.list({
+      part: ['snippet'],
+      channelId: channelId,
+      maxResults: 1,
+      order: 'date',
+      type: ['video'],
     });
-  }
-});
 
-// === YouTube Notifier ===
-let lastVideoId = null;
-const YT_CHANNEL_ID = 'UCcgSBkJ9UkQZkxRGazqgR_g'; // ✅ Your channel ID
-const DISCORD_CHANNEL_ID = '1367902502892081323'; // ✅ Your Discord channel ID
+    if (!response.data.items || response.data.items.length === 0) {
+      console.log('No videos found for this channel.');
+      return;
+    }
 
-async function checkYouTube() {
-  const url = `https://yt.lemnoslife.com/channels?part=videos&id=${YT_CHANNEL_ID}`;
-
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const latest = data.items?.[0]?.videos?.[0];
-    if (!latest) return;
-
-    const videoId = latest.videoId;
-    const videoTitle = latest.title;
+    const video = response.data.items[0];
+    const videoId = video.id.videoId;
+    const title = video.snippet.title;
+    const thumbnail = video.snippet.thumbnails.high.url;
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    if (videoId !== lastVideoId) {
-      lastVideoId = videoId;
-      const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-      if (channel) {
-        channel.send(`🎬 **New YouTube Video Uploaded!**\n📌 **${videoTitle}**\n▶️ ${videoUrl}`);
-        console.log(`📢 Sent ping for: ${videoTitle}`);
-      }
-    } else {
-      console.log('⏱️ No new video.');
-    }
-  } catch (err) {
-    console.error('YouTube check failed:', err.message);
+    // Pretty announcement
+    const announcement = `
+🎬 **New Video Alert!**
+
+**${title}**
+
+👉 Watch now: ${videoUrl}
+
+Thumbnail: ${thumbnail}
+    `;
+
+    // For console:
+    console.log(announcement);
+
+    // If using Discord.js or other platform, you can send embed message here
+  } catch (error) {
+    console.error('Failed to fetch or announce video:', error);
   }
 }
 
-function startYouTubeCheck() {
-  checkYouTube();
-  setInterval(checkYouTube, 5 * 60 * 1000); // every 5 minutes
+// Main function to coordinate
+async function main() {
+  const handle = '@crazyechoo'; // your channel handle (including '@')
+  // Remove '@' from handle for search
+  const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
+  try {
+    const channelId = await getChannelIdFromHandle(cleanHandle);
+    console.log(`Resolved channel ID: ${channelId}`);
+
+    await announceLatestVideo(channelId);
+  } catch (error) {
+    console.error('Error in main execution:', error);
+  }
 }
 
-// === Render keep-alive ===
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
-
-// Login
-client.login(process.env.TOKEN);
+main();
