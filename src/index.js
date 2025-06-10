@@ -102,7 +102,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`
-🎬 **New Video Alert!**
+@everyone **CRAZY just posted a video!**
 **${title}**
 👉 Watch now: ${url}
 Thumbnail: ${thumbnail}
