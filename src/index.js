@@ -34,6 +34,31 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
+// Helper: Send to multiple Discord channels
+function notifyAllDiscordChannels(title, url, thumbnail) {
+  const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
+  channelIds.forEach((id) => {
+    const channel = client.channels.cache.get(id.trim());
+    if (channel) {
+      channel.send({
+        content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
+        embeds: [
+          {
+            title: title,
+            url: url,
+            image: { url: thumbnail },
+            color: 0xff0000,
+          },
+        ],
+      }).catch((err) => {
+        console.error(`❌ Failed to send message to channel ${id.trim()}:`, err.message);
+      });
+    } else {
+      console.log(`⚠️ Channel ID ${id.trim()} not found in cache.`);
+    }
+  });
+}
+
 // Helper: Get channel's Uploads playlist ID
 async function getUploadsPlaylistId(channelId) {
   try {
@@ -48,14 +73,14 @@ async function getUploadsPlaylistId(channelId) {
   }
 }
 
-// Fetch latest video from Uploads playlist using playlistItems.list
+// Fetch latest video from Uploads playlist
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'desc', // usually playlistItems is ordered by date uploaded
+      order: 'desc',
     });
 
     const video = response.data.items[0];
@@ -83,28 +108,13 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 Thumbnail: ${thumbnail}
     `);
 
-    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
-    if (channel) {
-      channel.send({
-        content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
-        embeds: [
-          {
-            title: title,
-            url: url,
-            image: { url: thumbnail },
-            color: 0xff0000,
-          },
-        ],
-      });
-    } else {
-      console.log('❌ Discord channel not found.');
-    }
+    notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
 }
 
-// Resolve channel ID from handle (if you want to keep this)
+// Resolve channel ID from handle
 async function getChannelId(handle) {
   try {
     const res = await youtube.search.list({
@@ -120,8 +130,9 @@ async function getChannelId(handle) {
   }
 }
 
+// Main execution
 (async () => {
-  const handle = '@crazyechoo'; // Your YouTube channel handle or username
+  const handle = '@crazyechoo'; // Your YouTube channel handle
   const channelId = await getChannelId(handle.replace('@', ''));
 
   if (!channelId) {
@@ -137,7 +148,7 @@ async function getChannelId(handle) {
   }
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
-  await fetchLatestFromPlaylist(uploadsPlaylistId); // Check immediately
+  await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
