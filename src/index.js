@@ -105,12 +105,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`
-@everyone CRAZY just posted a video!
-${title}
-👉 Watch now: ${url}
-Thumbnail: ${thumbnail}
-    `);
+    console.log(`@everyone CRAZY just posted a video!\n${url}\nThumbnail: ${thumbnail}`);
 
     await notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
