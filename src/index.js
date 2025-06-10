@@ -47,7 +47,7 @@ async function notifyAllDiscordChannels(title, url, thumbnail) {
       }
 
       await channel.send({
-        content: `@everyone CRAZY just posted a video!\n**${title}**\n👉 Watch now: ${url}`,
+        content: `@everyone CRAZY just posted a video!`,
         embeds: [
           {
             title: title,
