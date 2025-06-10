@@ -34,14 +34,20 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Helper: Send to multiple Discord channels
-function notifyAllDiscordChannels(title, url, thumbnail) {
+// Helper: Send to multiple Discord channels (safe fetch)
+async function notifyAllDiscordChannels(title, url, thumbnail) {
   const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
-  channelIds.forEach((id) => {
-    const channel = client.channels.cache.get(id.trim());
-    if (channel) {
-      channel.send({
-        content: `@everyone **CRAZY just posted a video!**\n**${title}**\n👉 Watch now: ${url}`,
+  for (const id of channelIds) {
+    const channelId = id.trim();
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (!channel) {
+        console.warn(`⚠️ Channel ID ${channelId} not found or inaccessible.`);
+        continue;
+      }
+
+      await channel.send({
+        content: `@everyone CRAZY just posted a video!\n**${title}**\n👉 Watch now: ${url}`,
         embeds: [
           {
             title: title,
@@ -50,13 +56,11 @@ function notifyAllDiscordChannels(title, url, thumbnail) {
             color: 0xff0000,
           },
         ],
-      }).catch((err) => {
-        console.error(`❌ Failed to send message to channel ${id.trim()}:`, err.message);
       });
-    } else {
-      console.log(`⚠️ Channel ID ${id.trim()} not found in cache.`);
+    } catch (err) {
+      console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
     }
-  });
+  }
 }
 
 // Helper: Get channel's Uploads playlist ID
@@ -102,13 +106,13 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`
-@everyone **CRAZY just posted a video!**
-**${title}**
+@everyone CRAZY just posted a video!
+${title}
 👉 Watch now: ${url}
 Thumbnail: ${thumbnail}
     `);
 
-    notifyAllDiscordChannels(title, url, thumbnail);
+    await notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
@@ -153,4 +157,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // Check every 1 minute
-})();
+})()
