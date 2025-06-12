@@ -1,4 +1,4 @@
-// index.js - Final fixed version
+// index.js
 
 require("dotenv").config();
 const express = require("express");
@@ -28,7 +28,7 @@ client.once("ready", () => {
   client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", { type: "WATCHING" });
 });
 
-const OWNER_ID = "1354501822429265921";
+const OWNER_ID = "1354501822429265921"; // your Discord user ID
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -72,7 +72,7 @@ async function notifyDiscordChannel(title, url, thumbnail) {
     }
 
     await channel.send({
-      content: `CRAZY just posted a video!`,
+      content: `📢 CRAZY just posted a new video!`,
       embeds: [
         {
           title: title,
@@ -115,7 +115,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       return;
     }
 
-    const videoId = video?.snippet?.resourceId?.videoId;
+    const videoId = video.snippet.resourceId.videoId;
     if (!videoId) {
       console.log("❌ Could not extract video ID.");
       return;
@@ -133,7 +133,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`📢 New video found: ${url}`);
-
     await notifyDiscordChannel(title, url, thumbnail);
   } catch (err) {
     console.error("⚠️ Failed to fetch latest video from playlist:", err.message);
@@ -141,7 +140,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 }
 
 (async () => {
-  const channelId = "UCkKyIbpw_q9KKok7ED0u4hA"; // ✅ Fixed hardcoded channel ID
+  const channelId = process.env.YOUTUBE_CHANNEL_ID;
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
@@ -149,8 +148,9 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     console.error("❌ Could not find uploads playlist.");
     return;
   }
+
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 60 * 1000);
-})();
+})()
