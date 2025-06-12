@@ -1,7 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,18 +16,19 @@ app.listen(PORT, () => {
 
 // Discord Client Setup
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
 });
 
-// Show status and activity when bot is ready
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  client.user.setActivity("ㄈＲΛＺƳ   亗 YouTube", {
-    type: "WATCHING",
-  });
+  client.user.setActivity('ㄈＲΛＺƳ   亗  YouTube', { type: 'WATCHING' });
 });
 
-// Allow only bot owner to delete bot messages
+// Only allow this user to delete bot messages
 const OWNER_ID = '1354501822429265921';
 
 client.on('messageCreate', async (message) => {
@@ -42,7 +43,7 @@ client.on('messageCreate', async (message) => {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
       if (repliedMsg.author.id === client.user.id) {
         await repliedMsg.delete();
-        await message.delete(); // Delete the command message too
+        await message.delete();
         console.log(`🗑️ Bot message deleted by owner.`);
       }
     } catch (err) {
@@ -51,6 +52,7 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// Login with Discord token
 client.login(process.env.DISCORD_TOKEN);
 
 // YouTube API setup
@@ -61,7 +63,7 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Notify only the test channel
+// Notify Discord channels
 async function notifyAllDiscordChannels(title, url, thumbnail) {
   const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
   for (const id of channelIds) {
@@ -90,7 +92,7 @@ async function notifyAllDiscordChannels(title, url, thumbnail) {
   }
 }
 
-// Fetch latest video from the uploads playlist
+// Check for latest video
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
@@ -118,8 +120,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`CRAZY just posted a video!\n${url}\nThumbnail: ${thumbnail}`);
-
+    console.log(`📢 CRAZY just posted a video!\n${url}`);
     await notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
@@ -128,12 +129,15 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
 // Start monitoring
 (async () => {
-  const uploadsPlaylistId = "UUkKyIbpw_q9KKok7ED0u4hA"; // Hardcoded for @crazyechoo
-  console.log(`✅ Using hardcoded uploads playlist ID: ${uploadsPlaylistId}`);
+  const channelId = 'UCkKyIbpw_q9KKok7ED0u4hA'; // Your actual channel ID
+  console.log(`✅ Monitoring channel ID: ${channelId}`);
+
+  const uploadsPlaylistId = channelId.replace('UC', 'UU'); // Convert to uploads playlist
+  console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
   await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Check every 1 minute
+  }, 60 * 1000); // Every 1 minute
 })();
