@@ -21,12 +21,16 @@ const client = new Client({
 
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
+
+  // Set custom watching status
+  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", {
+    type: "WATCHING",
+  });
 });
 
 // Only allow this user to delete bot messages
 const OWNER_ID = '1354501822429265921';
 
-// Command: Delete bot message by replying with !delete
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
@@ -39,7 +43,7 @@ client.on('messageCreate', async (message) => {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
       if (repliedMsg.author.id === client.user.id) {
         await repliedMsg.delete();
-        await message.delete(); // Delete the command message too
+        await message.delete();
         console.log(`🗑️ Bot message deleted by owner.`);
       }
     } catch (err) {
@@ -48,7 +52,6 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// Login with Discord token
 client.login(process.env.DISCORD_TOKEN);
 
 // YouTube API setup
@@ -59,36 +62,33 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Send to multiple channels
+// Send to single active channel
 async function notifyAllDiscordChannels(title, url, thumbnail) {
-  const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
-  for (const id of channelIds) {
-    const channelId = id.trim();
-    try {
-      const channel = await client.channels.fetch(channelId);
-      if (!channel) {
-        console.warn(`⚠️ Channel ID ${channelId} not found or inaccessible.`);
-        continue;
-      }
-
-      await channel.send({
-        content: `CRAZY just posted a video!`,
-        embeds: [
-          {
-            title: title,
-            url: url,
-            image: { url: thumbnail },
-            color: 0xff0000,
-          },
-        ],
-      });
-    } catch (err) {
-      console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
+  const channelId = process.env.DISCORD_CHANNEL_ID;
+  try {
+    const channel = await client.channels.fetch(channelId.trim());
+    if (!channel) {
+      console.warn(`⚠️ Channel ID ${channelId} not found or inaccessible.`);
+      return;
     }
+
+    await channel.send({
+      content: `CRAZY just posted a video!`,
+      embeds: [
+        {
+          title: title,
+          url: url,
+          image: { url: thumbnail },
+          color: 0xff0000,
+        },
+      ],
+    });
+  } catch (err) {
+    console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
   }
 }
 
-// Get Uploads Playlist ID
+// Get Uploads Playlist ID using hardcoded channel ID
 async function getUploadsPlaylistId(channelId) {
   try {
     const response = await youtube.channels.list({
@@ -130,7 +130,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`CRAZY just posted a video!\n${url}\nThumbnail: ${thumbnail}`);
+    console.log(`📺 New video posted!\n${url}\nThumbnail: ${thumbnail}`);
 
     await notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
@@ -138,31 +138,10 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   }
 }
 
-// Resolve channel ID from handle
-async function getChannelId(handle) {
-  try {
-    const res = await youtube.search.list({
-      part: ['snippet'],
-      q: handle,
-      type: ['channel'],
-      maxResults: 1,
-    });
-    return res.data.items[0]?.snippet.channelId;
-  } catch (err) {
-    console.error('⚠️ Error resolving handle:', err.message);
-    return null;
-  }
-}
-
 // Start monitoring
 (async () => {
-  const handle = '@crazyechoo';
-  const channelId = await getChannelId(handle.replace('@', ''));
+  const channelId = 'UCkKyIbpw_q9KKok7ED0u4hA'; // 🔒 Your real channel ID
 
-  if (!channelId) {
-    console.error('❌ Could not find channel.');
-    return;
-  }
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
@@ -176,5 +155,5 @@ async function getChannelId(handle) {
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Check every 1 minute
-})();
+  }, 60 * 1000); // Every 60 sec
+})()
