@@ -1,20 +1,20 @@
-const express = require('express');
-const { google } = require('googleapis');
-const { Client, GatewayIntentBits } = require('discord.js');
-require('dotenv').config();
+// index.js - Final fixed version
+
+require("dotenv").config();
+const express = require("express");
+const { google } = require("googleapis");
+const { Client, GatewayIntentBits } = require("discord.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep Render alive
-app.get('/', (req, res) => {
-  res.send('✅ Crazy Bot is running!');
+app.get("/", (req, res) => {
+  res.send("✅ Crazy Bot is running!");
 });
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord Client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -23,51 +23,47 @@ const client = new Client({
   ],
 });
 
-client.once('ready', () => {
+client.once("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
   client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", { type: "WATCHING" });
 });
 
-const OWNER_ID = '1354501822429265921';
+const OWNER_ID = "1354501822429265921";
 
-client.on('messageCreate', async (message) => {
+client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (
     message.reference &&
-    message.content.trim().toLowerCase() === '!delete' &&
+    message.content.trim().toLowerCase() === "!delete" &&
     message.author.id === OWNER_ID
   ) {
     try {
-      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+      const repliedMsg = await message.channel.messages.fetch(
+        message.reference.messageId
+      );
       if (repliedMsg.author.id === client.user.id) {
         await repliedMsg.delete();
         await message.delete();
-        console.log(`🗑️ Bot message deleted by owner.`);
+        console.log("🗑️ Bot message deleted by owner.");
       }
     } catch (err) {
-      console.error('⚠️ Failed to delete message:', err.message);
+      console.error("⚠️ Failed to delete message:", err.message);
     }
   }
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube Setup
 const youtube = google.youtube({
-  version: 'v3',
+  version: "v3",
   auth: process.env.YOUTUBE_API_KEY,
 });
 
 let lastVideoId = null;
 
 async function notifyDiscordChannel(title, url, thumbnail) {
-  const channelId = process.env.DISCORD_CHANNEL_ID;
-  if (!channelId) {
-    console.warn("⚠️ No DISCORD_CHANNEL_ID found in .env");
-    return;
-  }
-
+  const channelId = process.env.DISCORD_CHANNEL_ID.trim();
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel) {
@@ -87,19 +83,19 @@ async function notifyDiscordChannel(title, url, thumbnail) {
       ],
     });
   } catch (err) {
-    console.warn(`⚠️ Failed to send to channel ${channelId}: ${err.message}`);
+    console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
   }
 }
 
 async function getUploadsPlaylistId(channelId) {
   try {
     const response = await youtube.channels.list({
-      part: ['contentDetails'],
+      part: ["contentDetails"],
       id: [channelId],
     });
-    return response.data.items[0].contentDetails.relatedPlaylists.uploads;
+    return response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
   } catch (err) {
-    console.error('⚠️ Error fetching uploads playlist:', err.message);
+    console.error("⚠️ Error fetching uploads playlist:", err.message);
     return null;
   }
 }
@@ -107,21 +103,26 @@ async function getUploadsPlaylistId(channelId) {
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
-      part: ['snippet'],
+      part: ["snippet"],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'date',
+      order: "date",
     });
 
-    const video = response.data.items[0];
+    const video = response.data.items?.[0];
     if (!video) {
-      console.log('❌ No video found in uploads playlist.');
+      console.log("❌ No video found in uploads playlist.");
       return;
     }
 
-    const videoId = video.snippet.resourceId.videoId;
+    const videoId = video?.snippet?.resourceId?.videoId;
+    if (!videoId) {
+      console.log("❌ Could not extract video ID.");
+      return;
+    }
+
     if (videoId === lastVideoId) {
-      console.log('🔁 No new video detected.');
+      console.log("🔁 No new video detected.");
       return;
     }
 
@@ -132,26 +133,24 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`📢 New video found: ${url}`);
+
     await notifyDiscordChannel(title, url, thumbnail);
   } catch (err) {
-    console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
+    console.error("⚠️ Failed to fetch latest video from playlist:", err.message);
   }
 }
 
 (async () => {
-  const channelId = 'UCkKyIbpw_q9KKok7ED0u4hA'; // Your exact channel ID
+  const channelId = "UCkKyIbpw_q9KKok7ED0u4hA"; // ✅ Fixed hardcoded channel ID
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
   if (!uploadsPlaylistId) {
-    console.error('❌ Could not find uploads playlist.');
+    console.error("❌ Could not find uploads playlist.");
     return;
   }
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
-  await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
-
-  setInterval(() => {
-    fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Every minute
+  await fetchLatestFromPlaylist(uploadsPlaylistId);
+  setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 60 * 1000);
 })();
