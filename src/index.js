@@ -19,16 +19,15 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
+// Show status and activity when bot is ready
 client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-
-  // Set custom watching status
-  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", {
+  client.user.setActivity("ㄈＲΛＺƳ   亗 YouTube", {
     type: "WATCHING",
   });
 });
 
-// Only allow this user to delete bot messages
+// Allow only bot owner to delete bot messages
 const OWNER_ID = '1354501822429265921';
 
 client.on('messageCreate', async (message) => {
@@ -43,7 +42,7 @@ client.on('messageCreate', async (message) => {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
       if (repliedMsg.author.id === client.user.id) {
         await repliedMsg.delete();
-        await message.delete();
+        await message.delete(); // Delete the command message too
         console.log(`🗑️ Bot message deleted by owner.`);
       }
     } catch (err) {
@@ -62,47 +61,36 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Send to single active channel
+// Notify only the test channel
 async function notifyAllDiscordChannels(title, url, thumbnail) {
-  const channelId = process.env.DISCORD_CHANNEL_ID;
-  try {
-    const channel = await client.channels.fetch(channelId.trim());
-    if (!channel) {
-      console.warn(`⚠️ Channel ID ${channelId} not found or inaccessible.`);
-      return;
+  const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
+  for (const id of channelIds) {
+    const channelId = id.trim();
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (!channel) {
+        console.warn(`⚠️ Channel ID ${channelId} not found or inaccessible.`);
+        continue;
+      }
+
+      await channel.send({
+        content: `CRAZY just posted a video!`,
+        embeds: [
+          {
+            title: title,
+            url: url,
+            image: { url: thumbnail },
+            color: 0xff0000,
+          },
+        ],
+      });
+    } catch (err) {
+      console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
     }
-
-    await channel.send({
-      content: `CRAZY just posted a video!`,
-      embeds: [
-        {
-          title: title,
-          url: url,
-          image: { url: thumbnail },
-          color: 0xff0000,
-        },
-      ],
-    });
-  } catch (err) {
-    console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
   }
 }
 
-// Get Uploads Playlist ID using hardcoded channel ID
-async function getUploadsPlaylistId(channelId) {
-  try {
-    const response = await youtube.channels.list({
-      part: ['contentDetails'],
-      id: [channelId],
-    });
-    return response.data.items[0].contentDetails.relatedPlaylists.uploads;
-  } catch (err) {
-    console.error('⚠️ Error fetching uploads playlist:', err.message);
-    return null;
-  }
-}
-
-// Check for latest video
+// Fetch latest video from the uploads playlist
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
@@ -130,7 +118,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`📺 New video posted!\n${url}\nThumbnail: ${thumbnail}`);
+    console.log(`CRAZY just posted a video!\n${url}\nThumbnail: ${thumbnail}`);
 
     await notifyAllDiscordChannels(title, url, thumbnail);
   } catch (err) {
@@ -140,20 +128,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
 // Start monitoring
 (async () => {
-  const channelId = 'UCkKyIbpw_q9KKok7ED0u4hA'; // 🔒 Your real channel ID
-
-  console.log(`✅ Monitoring channel ID: ${channelId}`);
-
-  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-  if (!uploadsPlaylistId) {
-    console.error('❌ Could not find uploads playlist.');
-    return;
-  }
-  console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
+  const uploadsPlaylistId = "UUkKyIbpw_q9KKok7ED0u4hA"; // Hardcoded for @crazyechoo
+  console.log(`✅ Using hardcoded uploads playlist ID: ${uploadsPlaylistId}`);
 
   await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Every 60 sec
-})()
+  }, 60 * 1000); // Check every 1 minute
+})();
