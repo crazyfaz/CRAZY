@@ -6,7 +6,6 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep Render alive
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -14,7 +13,6 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord Setup
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -61,7 +59,6 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Notify Discord
 async function notifyAllDiscordChannels(title, url, thumbnail) {
   const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
   for (const id of channelIds) {
@@ -90,7 +87,25 @@ async function notifyAllDiscordChannels(title, url, thumbnail) {
   }
 }
 
-// Get uploads playlist ID
+async function getChannelIdBySearch(query) {
+  try {
+    const res = await youtube.search.list({
+      part: ['snippet'],
+      q: query,
+      type: ['channel'],
+      maxResults: 1,
+    });
+    const id = res.data.items[0]?.snippet?.channelId;
+    if (!id) {
+      console.error('❌ No channel found.');
+    }
+    return id;
+  } catch (err) {
+    console.error('⚠️ Error searching channel:', err.message);
+    return null;
+  }
+}
+
 async function getUploadsPlaylistId(channelId) {
   try {
     const response = await youtube.channels.list({
@@ -113,7 +128,6 @@ async function getUploadsPlaylistId(channelId) {
   }
 }
 
-// Fetch latest video
 async function fetchLatestFromPlaylist(playlistId) {
   try {
     const response = await youtube.playlistItems.list({
@@ -148,15 +162,17 @@ async function fetchLatestFromPlaylist(playlistId) {
   }
 }
 
-// Start monitoring
 (async () => {
-  const channelId = 'UCkKyIbpw_q9KKok7ED0u4hA'; // your channel
+  const searchQuery = 'CRAZY ECHOO'; // Exact name of your channel
+  const channelId = await getChannelIdBySearch(searchQuery);
+
+  if (!channelId) return;
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
   if (!uploadsPlaylistId) return;
 
-  await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
+  await fetchLatestFromPlaylist(uploadsPlaylistId);
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
