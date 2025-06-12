@@ -1,5 +1,3 @@
-// index.js
-
 require("dotenv").config();
 const express = require("express");
 const { google } = require("googleapis");
@@ -25,10 +23,12 @@ const client = new Client({
 
 client.once("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", { type: "WATCHING" });
+  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", {
+    type: "WATCHING",
+  });
 });
 
-const OWNER_ID = "1354501822429265921"; // your Discord user ID
+const OWNER_ID = "1354501822429265921";
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -72,7 +72,7 @@ async function notifyDiscordChannel(title, url, thumbnail) {
     }
 
     await channel.send({
-      content: `📢 CRAZY just posted a new video!`,
+      content: `📢 CRAZY just posted a video!`,
       embeds: [
         {
           title: title,
@@ -93,6 +93,7 @@ async function getUploadsPlaylistId(channelId) {
       part: ["contentDetails"],
       id: [channelId],
     });
+
     return response.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
   } catch (err) {
     console.error("⚠️ Error fetching uploads playlist:", err.message);
@@ -106,7 +107,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       part: ["snippet"],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: "date",
     });
 
     const video = response.data.items?.[0];
@@ -116,18 +116,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
     const videoId = video.snippet.resourceId.videoId;
-    if (!videoId) {
-      console.log("❌ Could not extract video ID.");
-      return;
-    }
-
     if (videoId === lastVideoId) {
       console.log("🔁 No new video detected.");
       return;
     }
 
     lastVideoId = videoId;
-
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
@@ -135,7 +129,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     console.log(`📢 New video found: ${url}`);
     await notifyDiscordChannel(title, url, thumbnail);
   } catch (err) {
-    console.error("⚠️ Failed to fetch latest video from playlist:", err.message);
+    console.error("⚠️ Failed to fetch latest video:", err.message);
   }
 }
 
@@ -153,4 +147,4 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 60 * 1000);
-})()
+})();
