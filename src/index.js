@@ -23,7 +23,6 @@ client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-// Login with Discord token
 client.login(process.env.DISCORD_TOKEN);
 
 // YouTube API setup
@@ -34,7 +33,6 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Helper: Get uploads playlist ID
 async function getUploadsPlaylistId(channelId) {
   try {
     const response = await youtube.channels.list({
@@ -48,13 +46,13 @@ async function getUploadsPlaylistId(channelId) {
   }
 }
 
-// Fetch latest video
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
+      order: 'desc',
     });
 
     const video = response.data.items[0];
@@ -77,36 +75,38 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     console.log(`🎬 New video: ${title} (${url})`);
 
-    const embed = {
-      title: title,
-      url: url,
-      image: { url: thumbnail },
-      color: 0xff0000,
-    };
-
-    const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
-
-    channelIds.forEach(id => {
-      client.channels.fetch(id.trim())
-        .then(ch => {
-          if (ch) {
+    // Fetch and send to the specific Discord channel
+    const channelId = process.env.DISCORD_CHANNEL_ID;
+    client.channels.fetch(channelId)
+      .then(ch => {
+        if (ch) {
+          console.log(`✅ Channel fetched: ${channelId} (${ch.type})`);
+          if (ch.isTextBased()) {
             ch.send({
               content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
-              embeds: [embed],
-            }).catch(err => console.error(`❌ Failed to send to ${id}: ${err.message}`));
+              embeds: [{
+                title: title,
+                url: url,
+                image: { url: thumbnail },
+                color: 0xff0000,
+              }],
+            }).catch(err => console.error(`❌ Failed to send message: ${err.message}`));
           } else {
-            console.error(`❌ Channel ${id} could not be fetched.`);
+            console.error(`❌ Channel ${channelId} is not text-based (type: ${ch.type})`);
           }
-        })
-        .catch(err => console.error(`❌ Fetch failed for channel ${id}: ${err.message}`));
-    });
+        } else {
+          console.error(`❌ Channel ${channelId} could not be fetched (null).`);
+        }
+      })
+      .catch(err => {
+        console.error(`❌ Fetch failed for channel ${channelId}: ${err.message}`);
+      });
 
   } catch (err) {
-    console.error('⚠️ Failed to fetch latest video:', err.message);
+    console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
 }
 
-// Resolve channel ID from handle
 async function getChannelId(handle) {
   try {
     const res = await youtube.search.list({
@@ -122,7 +122,6 @@ async function getChannelId(handle) {
   }
 }
 
-// Main runner
 (async () => {
   const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
@@ -140,9 +139,9 @@ async function getChannelId(handle) {
   }
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
-  await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
+  await fetchLatestFromPlaylist(uploadsPlaylistId);
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Every 1 minute
-})()
+  }, 60 * 1000); // Every 1 min
+})();
