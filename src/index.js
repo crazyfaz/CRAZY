@@ -1,4 +1,6 @@
 require("dotenv").config();
+console.log("Loaded channel ID:", JSON.stringify(process.env.DISCORD_CHANNEL_ID));  // ✅ DEBUG LINE
+
 const express = require("express");
 const { google } = require("googleapis");
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -147,4 +149,4 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 60 * 1000);
-})();
+})()
