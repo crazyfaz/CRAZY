@@ -71,35 +71,24 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`🎬 New video: ${title} (${url})`);
 
-    // Fetch and send to the specific Discord channel
+    // Send link only for native embed
     const channelId = process.env.DISCORD_CHANNEL_ID;
     client.channels.fetch(channelId)
       .then(ch => {
-        if (ch) {
-          console.log(`✅ Channel fetched: ${channelId} (${ch.type})`);
-          if (ch.isTextBased()) {
-            ch.send({
-              content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
-              embeds: [{
-                title: title,
-                url: url,
-                image: { url: thumbnail },
-                color: 0xff0000,
-              }],
-            }).catch(err => console.error(`❌ Failed to send message: ${err.message}`));
-          } else {
-            console.error(`❌ Channel ${channelId} is not text-based (type: ${ch.type})`);
-          }
+        if (ch?.isTextBased()) {
+          console.log(`✅ Sending to #${ch.name}`);
+          ch.send({
+            content: `🎬 **New Video!**\n${url}`, // Discord auto-generates preview
+          }).catch(err => console.error(`❌ Failed to send message: ${err.message}`));
         } else {
-          console.error(`❌ Channel ${channelId} could not be fetched (null).`);
+          console.error(`❌ Channel ${channelId} is not text-based.`);
         }
       })
       .catch(err => {
-        console.error(`❌ Fetch failed for channel ${channelId}: ${err.message}`);
+        console.error(`❌ Error fetching channel: ${err.message}`);
       });
 
   } catch (err) {
@@ -144,4 +133,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // Every 1 min
-})();
+})()
