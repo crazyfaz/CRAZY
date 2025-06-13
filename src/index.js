@@ -6,11 +6,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep service alive
-app.get('/', (req, res) => res.send('✅ Crazy Bot is running!'));
-app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
+// Keep Render service alive
+app.get('/', (req, res) => {
+  res.send('✅ Crazy Bot is running!');
+});
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
 
-// Discord client setup
+// Discord Client Setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -19,6 +23,7 @@ client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
+// Login with Discord token
 client.login(process.env.DISCORD_TOKEN);
 
 // YouTube API setup
@@ -32,28 +37,31 @@ let lastVideoId = null;
 // Helper: Get uploads playlist ID
 async function getUploadsPlaylistId(channelId) {
   try {
-    const res = await youtube.channels.list({
+    const response = await youtube.channels.list({
       part: ['contentDetails'],
       id: [channelId],
     });
-    return res.data.items[0]?.contentDetails.relatedPlaylists.uploads || null;
+    return response.data.items[0].contentDetails.relatedPlaylists.uploads;
   } catch (err) {
     console.error('⚠️ Error fetching uploads playlist:', err.message);
     return null;
   }
 }
 
-// Fetch + post latest video
-async function fetchLatest(uploadsPlaylistId) {
+// Fetch latest video
+async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
-    const res = await youtube.playlistItems.list({
+    const response = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
     });
 
-    const video = res.data.items[0];
-    if (!video) return;
+    const video = response.data.items[0];
+    if (!video) {
+      console.log('❌ No video found in uploads playlist.');
+      return;
+    }
 
     const videoId = video.snippet.resourceId.videoId;
     if (videoId === lastVideoId) {
@@ -70,49 +78,71 @@ async function fetchLatest(uploadsPlaylistId) {
     console.log(`🎬 New video: ${title} (${url})`);
 
     const embed = {
-      title,
-      url,
+      title: title,
+      url: url,
       image: { url: thumbnail },
       color: 0xff0000,
     };
 
-    // Post in multiple channels
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',');
+
     channelIds.forEach(id => {
-      const ch = client.channels.cache.get(id.trim());
-      if (ch) {
-        ch.send({
-          content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
-          embeds: [embed],
-        }).catch(err => console.error(`❌ Failed to send to ${id}: ${err.message}`));
-      } else {
-        console.error(`❌ Channel ${id} not found in cache.`);
-      }
+      client.channels.fetch(id.trim())
+        .then(ch => {
+          if (ch) {
+            ch.send({
+              content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
+              embeds: [embed],
+            }).catch(err => console.error(`❌ Failed to send to ${id}: ${err.message}`));
+          } else {
+            console.error(`❌ Channel ${id} could not be fetched.`);
+          }
+        })
+        .catch(err => console.error(`❌ Fetch failed for channel ${id}: ${err.message}`));
     });
 
   } catch (err) {
-    console.error('⚠️ Error fetching latest video:', err.message);
+    console.error('⚠️ Failed to fetch latest video:', err.message);
   }
 }
 
+// Resolve channel ID from handle
+async function getChannelId(handle) {
+  try {
+    const res = await youtube.search.list({
+      part: ['snippet'],
+      q: handle,
+      type: ['channel'],
+      maxResults: 1,
+    });
+    return res.data.items[0]?.snippet.channelId;
+  } catch (err) {
+    console.error('⚠️ Error resolving handle:', err.message);
+    return null;
+  }
+}
+
+// Main runner
 (async () => {
-  const channelId = process.env.YOUTUBE_CHANNEL_ID;
+  const handle = '@crazyechoo';
+  const channelId = await getChannelId(handle.replace('@', ''));
+
   if (!channelId) {
-    console.error('❌ No YOUTUBE_CHANNEL_ID in .env');
+    console.error('❌ Could not find channel.');
     return;
   }
-
-  console.log(`✅ Monitoring YouTube channel: ${channelId}`);
+  console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
   if (!uploadsPlaylistId) {
-    console.error('❌ Could not get uploads playlist.');
+    console.error('❌ Could not find uploads playlist.');
     return;
   }
-
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
-  await fetchLatest(uploadsPlaylistId);
+  await fetchLatestFromPlaylist(uploadsPlaylistId); // Initial check
 
-  setInterval(() => fetchLatest(uploadsPlaylistId), 60 * 1000);
-})();
+  setInterval(() => {
+    fetchLatestFromPlaylist(uploadsPlaylistId);
+  }, 60 * 1000); // Every 1 minute
+})()
