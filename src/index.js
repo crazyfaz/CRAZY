@@ -71,25 +71,36 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const thumbnail = video.snippet.thumbnails.high.url;
 
     console.log(`🎬 New video: ${title} (${url})`);
 
-    // Send link only for native embed
-    const channelId = process.env.DISCORD_CHANNEL_ID;
-    client.channels.fetch(channelId)
-      .then(ch => {
-        if (ch?.isTextBased()) {
-          console.log(`✅ Sending to #${ch.name}`);
-          ch.send({
-            content: `🎬 **New Video!**\n${url}`, // Discord auto-generates preview
-          }).catch(err => console.error(`❌ Failed to send message: ${err.message}`));
+    const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
+
+    for (const channelId of channelIds) {
+      try {
+        const ch = await client.channels.fetch(channelId);
+        if (ch && ch.isTextBased()) {
+          await ch.send({
+            content: `CRAZY just posted a video!`,
+            embeds: [{
+              title: title,
+              url: url,
+              image: { url: thumbnail },
+              color: 0xff0000,
+              author: {
+                name: 'YouTube - CRAZYECHOO',
+              },
+            }],
+          });
+          console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
           console.error(`❌ Channel ${channelId} is not text-based.`);
         }
-      })
-      .catch(err => {
-        console.error(`❌ Error fetching channel: ${err.message}`);
-      });
+      } catch (err) {
+        console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
+      }
+    }
 
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
