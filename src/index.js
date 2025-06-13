@@ -1,5 +1,4 @@
 require("dotenv").config();
-console.log("Loaded channel ID:", JSON.stringify(process.env.DISCORD_CHANNEL_ID));  // ✅ DEBUG LINE
 
 const express = require("express");
 const { google } = require("googleapis");
@@ -25,9 +24,7 @@ const client = new Client({
 
 client.once("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", {
-    type: "WATCHING",
-  });
+  client.user.setActivity("ㄈＲΛＺƳ   亗  YouTube", { type: "WATCHING" });
 });
 
 const OWNER_ID = "1354501822429265921";
@@ -41,9 +38,7 @@ client.on("messageCreate", async (message) => {
     message.author.id === OWNER_ID
   ) {
     try {
-      const repliedMsg = await message.channel.messages.fetch(
-        message.reference.messageId
-      );
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
       if (repliedMsg.author.id === client.user.id) {
         await repliedMsg.delete();
         await message.delete();
@@ -65,7 +60,12 @@ const youtube = google.youtube({
 let lastVideoId = null;
 
 async function notifyDiscordChannel(title, url, thumbnail) {
-  const channelId = process.env.DISCORD_CHANNEL_ID.trim();
+  const channelId = process.env.DISCORD_CHANNEL_ID?.trim();
+  if (!channelId) {
+    console.warn("⚠️ DISCORD_CHANNEL_ID not set in environment variables.");
+    return;
+  }
+
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel) {
@@ -125,11 +125,11 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     lastVideoId = videoId;
     const title = video.snippet.title;
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`📢 New video found: ${url}`);
-    await notifyDiscordChannel(title, url, thumbnail);
+    console.log(`📢 New video found: ${videoUrl}`);
+    await notifyDiscordChannel(title, videoUrl, thumbnail);
   } catch (err) {
     console.error("⚠️ Failed to fetch latest video:", err.message);
   }
