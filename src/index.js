@@ -1,4 +1,6 @@
 require("dotenv").config();
+console.log("Loaded channel IDs:", JSON.stringify(process.env.DISCORD_CHANNEL_IDS));
+
 const express = require("express");
 const { google } = require("googleapis");
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -23,12 +25,43 @@ const client = new Client({
 
 client.once("ready", () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-  client.user.setActivity("ㄈＲΛＺƳ   亗 YouTube", { type: "WATCHING" });
+  client.user.setActivity("ㄈＲΛＺƳ 亗 YouTube", {
+    type: "WATCHING",
+  });
 
-  client.channels.cache
-    .filter(c => c.isTextBased())
-    .forEach(c => console.log(`📌 Bot sees channel: ${c.id} - ${c.name}`));
+  client.guilds.cache.forEach(guild => {
+    guild.channels.cache.forEach(channel => {
+      if (channel.isTextBased()) {
+        console.log(`📌 Bot sees channel: ${channel.id} - ${channel.name}`);
+      }
+    });
+  });
 });
+
+const OWNER_ID = "1354501822429265921";
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  if (
+    message.reference &&
+    message.content.trim().toLowerCase() === "!delete" &&
+    message.author.id === OWNER_ID
+  ) {
+    try {
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+      if (repliedMsg.author.id === client.user.id) {
+        await repliedMsg.delete();
+        await message.delete();
+        console.log("🗑️ Bot message deleted by owner.");
+      }
+    } catch (err) {
+      console.error("⚠️ Failed to delete message:", err.message);
+    }
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
 
 const youtube = google.youtube({
   version: "v3",
@@ -36,14 +69,15 @@ const youtube = google.youtube({
 });
 
 let lastVideoId = null;
-const channelIds = process.env.DISCORD_CHANNEL_IDS.split(",").map(id => id.trim());
 
 async function notifyDiscordChannels(title, url, thumbnail) {
-  for (const channelId of channelIds) {
+  const channelIds = process.env.DISCORD_CHANNEL_IDS.split(",").map(id => id.trim());
+
+  for (const id of channelIds) {
     try {
-      const channel = await client.channels.fetch(channelId);
+      const channel = await client.channels.fetch(id);
       if (!channel || !channel.isTextBased()) {
-        console.warn(`⚠️ Channel ID ${channelId} not found or not text-based.`);
+        console.warn(`⚠️ Channel ID ${id} not found or not text-based.`);
         continue;
       }
 
@@ -58,9 +92,9 @@ async function notifyDiscordChannels(title, url, thumbnail) {
           },
         ],
       });
-      console.log(`✅ Sent to channel ${channelId}`);
+      console.log(`✅ Sent video to ${channel.name}`);
     } catch (err) {
-      console.warn(`⚠️ Failed to send to ${channelId}: ${err.message}`);
+      console.warn(`⚠️ Failed to send to ${id}: ${err.message}`);
     }
   }
 }
@@ -112,10 +146,10 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 }
 
 (async () => {
-  const ytChannelId = process.env.YOUTUBE_CHANNEL_ID;
-  console.log(`✅ Monitoring channel ID: ${ytChannelId}`);
+  const channelId = process.env.YOUTUBE_CHANNEL_ID;
+  console.log(`✅ Monitoring channel ID: ${channelId}`);
 
-  const uploadsPlaylistId = await getUploadsPlaylistId(ytChannelId);
+  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
   if (!uploadsPlaylistId) {
     console.error("❌ Could not find uploads playlist.");
     return;
@@ -125,6 +159,4 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 60 * 1000);
-})();
-
-client.login(process.env.DISCORD_TOKEN);
+})()
