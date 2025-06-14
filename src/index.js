@@ -86,10 +86,15 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
             embeds: [{
               title: title,
               url: url,
+              description: '📺 [Watch Now](' + url + ')',
               image: { url: thumbnail },
               color: 0xff0000,
               author: {
-                name: 'YouTube - CRAZYECHOO',
+                name: 'YouTube\nCRAZY·亗',
+                icon_url: 'https://www.youtube.com/s/desktop/6c117fd4/img/favicon_144x144.png',
+              },
+              footer: {
+                text: 'CRAZYECHOO UPDATES',
               },
             }],
           });
