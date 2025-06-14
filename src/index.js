@@ -23,7 +23,6 @@ client.once('ready', () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 });
 
-// Login with Discord token
 client.login(process.env.DISCORD_TOKEN);
 
 // YouTube API setup
@@ -34,7 +33,6 @@ const youtube = google.youtube({
 
 let lastVideoId = null;
 
-// Helper: Get channel's Uploads playlist ID
 async function getUploadsPlaylistId(channelId) {
   try {
     const response = await youtube.channels.list({
@@ -48,14 +46,13 @@ async function getUploadsPlaylistId(channelId) {
   }
 }
 
-// Fetch latest video from Uploads playlist using playlistItems.list
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     const response = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'desc', // usually playlistItems is ordered by date uploaded
+      order: 'desc',
     });
 
     const video = response.data.items[0];
@@ -76,35 +73,40 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`
-🎬 **New Video Alert!**
-**${title}**
-👉 Watch now: ${url}
-Thumbnail: ${thumbnail}
-    `);
+    console.log(`🎬 New video detected: ${title} (${url})`);
 
-    const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
-    if (channel) {
-      channel.send({
-        content: ` **CRAZY just posted a video!**\n**${title}**\n👉 Watch now: ${url}`,
-        embeds: [
-          {
-            title: title,
-            url: url,
-            image: { url: thumbnail },
-            color: 0xff0000,
-          },
-        ],
-      });
-    } else {
-      console.log('❌ Discord channel not found.');
+    const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
+
+    for (const channelId of channelIds) {
+      const channel = client.channels.cache.get(channelId);
+      if (channel) {
+        channel.send({
+          content: `CRAZY just posted a video!\n${url}`,
+          embeds: [
+            {
+              author: { name: 'YouTube' },
+              description: 'CRAZY·亗',
+              title: title,
+              url: url,
+              image: { url: thumbnail },
+              color: 0xff0000,
+            }
+          ],
+        }).then(() => {
+          console.log(`✅ Sent update to channel ${channelId}`);
+        }).catch(err => {
+          console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
+        });
+      } else {
+        console.error(`❌ Discord channel ${channelId} not found.`);
+      }
     }
+
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
 }
 
-// Resolve channel ID from handle (if you want to keep this)
 async function getChannelId(handle) {
   try {
     const res = await youtube.search.list({
@@ -121,7 +123,7 @@ async function getChannelId(handle) {
 }
 
 (async () => {
-  const handle = '@crazyechoo'; // Your YouTube channel handle or username
+  const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
 
   if (!channelId) {
@@ -137,9 +139,9 @@ async function getChannelId(handle) {
   }
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
-  await fetchLatestFromPlaylist(uploadsPlaylistId); // Check immediately
+  await fetchLatestFromPlaylist(uploadsPlaylistId);
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Check every 1 minute
+  }, 60 * 1000);
 })()
