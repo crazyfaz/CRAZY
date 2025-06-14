@@ -80,7 +80,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     for (const channelId of channelIds) {
       try {
         const ch = await client.channels.fetch(channelId);
-        if (ch && ch.type === 0 && ch.send) { // Ensure it's a text channel
+        if (ch && ch.isTextBased() && ch.send) {
           await ch.send({
             content: `CRAZY just posted a video!`,
             embeds: [{
