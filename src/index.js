@@ -86,7 +86,7 @@ Thumbnail: ${thumbnail}
     const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
     if (channel) {
       channel.send({
-        content: `🎬 **New Video Alert!**\n**${title}**\n👉 Watch now: ${url}`,
+        content: ` **CRAZY just posted a video!**\n**${title}**\n👉 Watch now: ${url}`,
         embeds: [
           {
             title: title,
