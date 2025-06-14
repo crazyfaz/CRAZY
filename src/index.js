@@ -1,3 +1,5 @@
+// index.js
+
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
@@ -82,16 +84,21 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!`,
-            embeds: [{
-              color: 0xff0000,
-              description: `**YouTube**\nCRAZY·亗`,
-              title: title,
-              url: url,
-              image: {
-                url: thumbnail,
+            content: `CRAZY just posted a video!\n${url}`,
+            embeds: [
+              {
+                title: title,
+                url: url,
+                image: { url: thumbnail },
+                color: 0xff0000,
+                author: {
+                  name: 'YouTube',
+                },
+                footer: {
+                  text: 'CRAZY·༗',
+                },
               },
-            }],
+            ],
           });
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
@@ -101,7 +108,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
-
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
