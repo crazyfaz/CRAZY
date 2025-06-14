@@ -1,3 +1,5 @@
+// index.js
+
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
@@ -6,7 +8,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep Render service alive
+// Keep service alive
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -82,18 +84,20 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!\n${url}`,
+            content: `CRAZY just posted a video!\n<${url}>`,  // using <> disables Discord auto-embed
             embeds: [
               {
-                author: {
-                  name: 'YouTube',
-                  icon_url: 'https://www.youtube.com/s/desktop/8e2c99b4/img/favicon_144x144.png'
-                },
                 title: title,
                 url: url,
                 description: 'CRAZY·亗',
-                image: { url: thumbnail },
-                color: 0xff0000
+                color: 0xFF0000,
+                author: {
+                  name: 'YouTube',
+                  icon_url: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg'
+                },
+                image: {
+                  url: thumbnail
+                }
               }
             ]
           });
@@ -148,4 +152,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // Every 1 min
-})()
+})();
