@@ -14,7 +14,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord Client Setup
+// Discord client
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -25,7 +25,7 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube API setup
+// YouTube setup
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -73,32 +73,35 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`🎬 New video detected: ${title} (${url})`);
-
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
 
     for (const channelId of channelIds) {
-      const channel = client.channels.cache.get(channelId);
-      if (channel) {
-        channel.send({
-          content: `CRAZY just posted a video!\n${url}`,
-          embeds: [
-            {
-              author: { name: 'YouTube' },
-              description: 'CRAZY·亗',
-              title: title,
-              url: url,
-              image: { url: thumbnail },
-              color: 0xff0000,
-            }
-          ],
-        }).then(() => {
-          console.log(`✅ Sent update to channel ${channelId}`);
-        }).catch(err => {
-          console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
-        });
-      } else {
-        console.error(`❌ Discord channel ${channelId} not found.`);
+      try {
+        const channel = await client.channels.fetch(channelId);
+        if (channel && channel.isTextBased()) {
+          await channel.send({
+            content: `CRAZY just posted a video!\n${url}`,
+            embeds: [
+              {
+                title: title,
+                url: url,
+                description: 'CRAZY·亗',
+                color: 0xff0000,
+                author: {
+                  name: 'YouTube'
+                },
+                image: {
+                  url: thumbnail
+                }
+              }
+            ]
+          });
+          console.log(`✅ Sent to channel ${channelId}`);
+        } else {
+          console.error(`❌ Channel ${channelId} is not text-based or not found.`);
+        }
+      } catch (err) {
+        console.error(`❌ Could not send to channel ${channelId}: ${err.message}`);
       }
     }
 
@@ -144,4 +147,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000);
-})()
+})();
