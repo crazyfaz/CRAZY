@@ -73,7 +73,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`🎬 New video: ${title} (${url})`);
+    console.log(`🎬 New video detected: ${title} (${url})`);
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
 
@@ -82,16 +82,13 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!`,
-            embeds: [{
-              title: title,
-              url: url,
-              image: { url: thumbnail },
-              color: 0xff0000,
-              author: {
-                name: 'YouTube - CRAZYECHOO',
+            content: `YouTube\nCRAZY·亗\n[${title}](${url})`,
+            embeds: [
+              {
+                image: { url: thumbnail },
+                color: 0xff0000,
               },
-            }],
+            ],
           });
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
