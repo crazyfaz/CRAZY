@@ -85,7 +85,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
               {
                 author: {
                   name: 'YouTube',
-                  icon_url: 'https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png'
+                  icon_url: 'https://www.youtube.com/s/desktop/fe1e7d7e/img/favicon_32x32.png'
                 },
                 title: 'CRAZY·亗',
                 description: `[${title}](${url})`,
