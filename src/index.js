@@ -82,14 +82,17 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!\nYouTube\nCRAZY·亗\n${url}`,
+            content: `CRAZY just posted a video!`,
             embeds: [{
+              color: 0xff0000,
+              author: {
+                name: 'YouTube',
+              },
               title: title,
               url: url,
-              image: { url: thumbnail },
-              color: 0xff0000,
-              footer: {
-                text: 'Thumbnail above · CRAZYECHOO Upload',
+              description: 'CRAZY·亗',
+              image: {
+                url: thumbnail,
               },
             }],
           });
