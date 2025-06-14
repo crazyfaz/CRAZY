@@ -85,7 +85,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
               {
                 author: {
                   name: 'YouTube',
-                  icon_url: 'https://www.youtube.com/s/desktop/fe1e7d7e/img/favicon_32x32.png'
+                  icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
                 },
                 title: 'CRAZY·亗',
                 description: `[${title}](${url})`,
@@ -146,4 +146,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 min
-})();
+})()
