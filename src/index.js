@@ -6,7 +6,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep Render alive
+// Keep Render service alive
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -14,7 +14,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord client setup
+// Discord Client Setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -25,7 +25,7 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube setup
+// YouTube API setup
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -57,7 +57,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const video = response.data.items[0];
     if (!video) {
-      console.log('❌ No video found.');
+      console.log('❌ No video found in uploads playlist.');
       return;
     }
 
@@ -80,24 +80,26 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     for (const channelId of channelIds) {
       try {
         const ch = await client.channels.fetch(channelId);
-        if (ch && ch.type === 0 && ch.send) {
+        if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!`,
             embeds: [{
               title: title,
               url: url,
-              description: `**Channel:** CRAZY: 亗`,
+              description: `📺 [Watch Now](${url})`,
               image: { url: thumbnail },
               color: 0xff0000,
               author: {
                 name: 'YouTube',
                 icon_url: 'https://www.youtube.com/s/desktop/6c117fd4/img/favicon_144x144.png',
               },
+              footer: {
+                text: 'CRAZYECHOO',
+              },
             }],
           });
-          console.log(`✅ Sent to channel: ${channelId}`);
+          console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
-          console.error(`❌ Channel ${channelId} is not a text-based channel.`);
+          console.error(`❌ Channel ${channelId} is not text-based.`);
         }
       } catch (err) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
@@ -105,7 +107,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
   } catch (err) {
-    console.error('⚠️ Failed to fetch latest video:', err.message);
+    console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
 }
 
@@ -145,5 +147,5 @@ async function getChannelId(handle) {
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000);
-})()
+  }, 60 * 1000); // Every 1 min
+})();
