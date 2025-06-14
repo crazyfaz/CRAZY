@@ -80,21 +80,26 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     for (const channelId of channelIds) {
       try {
         const ch = await client.channels.fetch(channelId);
-        console.log(`Fetched channel ${channelId}:`, ch?.type);
-
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `YouTube\nCRAZY·亗\n[${title}](${url})`,
             embeds: [
               {
-                image: { url: thumbnail },
+                author: {
+                  name: 'YouTube',
+                },
+                description: 'CRAZY·亗',
+                title: title,
+                url: url,
+                image: {
+                  url: thumbnail,
+                },
                 color: 0xff0000,
               },
             ],
           });
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
-          console.error(`❌ Channel ${channelId} not text-based or not accessible.`);
+          console.error(`❌ Channel ${channelId} is not text-based.`);
         }
       } catch (err) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
