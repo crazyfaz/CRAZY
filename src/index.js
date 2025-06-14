@@ -1,5 +1,3 @@
-// index.js
-
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
@@ -54,16 +52,16 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'desc',
     });
 
-    const video = response.data.items[0];
-    if (!video) {
-      console.log('❌ No video found in uploads playlist.');
+    if (!response.data.items || response.data.items.length === 0) {
+      console.log('❌ No videos in the playlist.');
       return;
     }
 
+    const video = response.data.items[0];
     const videoId = video.snippet.resourceId.videoId;
+
     if (videoId === lastVideoId) {
       console.log('🔁 No new video detected.');
       return;
@@ -84,7 +82,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just posted a video!\n${url}`,
             embeds: [
               {
                 title: title,
@@ -151,3 +148,10 @@ async function getChannelId(handle) {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // Every 1 min
 })();
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('👋 Gracefully shutting down');
+  client.destroy();
+  process.exit();
+})
