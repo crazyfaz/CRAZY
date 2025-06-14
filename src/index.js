@@ -6,7 +6,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep Render service alive
+// Keep alive
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -14,7 +14,6 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord Client Setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -25,7 +24,7 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube API setup
+// YouTube API
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -35,11 +34,11 @@ let lastVideoId = null;
 
 async function getUploadsPlaylistId(channelId) {
   try {
-    const response = await youtube.channels.list({
+    const res = await youtube.channels.list({
       part: ['contentDetails'],
       id: [channelId],
     });
-    return response.data.items[0].contentDetails.relatedPlaylists.uploads;
+    return res.data.items[0].contentDetails.relatedPlaylists.uploads;
   } catch (err) {
     console.error('⚠️ Error fetching uploads playlist:', err.message);
     return null;
@@ -48,32 +47,24 @@ async function getUploadsPlaylistId(channelId) {
 
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
-    const response = await youtube.playlistItems.list({
+    const res = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
       order: 'desc',
     });
 
-    const video = response.data.items[0];
-    if (!video) {
-      console.log('❌ No video found in uploads playlist.');
-      return;
-    }
+    const video = res.data.items[0];
+    if (!video) return;
 
     const videoId = video.snippet.resourceId.videoId;
-    if (videoId === lastVideoId) {
-      console.log('🔁 No new video detected.');
-      return;
-    }
+    if (videoId === lastVideoId) return;
 
     lastVideoId = videoId;
 
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
-
-    console.log(`🎬 New video: ${title} (${url})`);
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
 
@@ -88,25 +79,23 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
               author: {
                 name: 'YouTube',
               },
+              description: 'CRAZY·亗',
               title: title,
               url: url,
-              description: 'CRAZY·亗',
               image: {
                 url: thumbnail,
               },
             }],
           });
-          console.log(`✅ Sent update to channel: ${channelId}`);
-        } else {
-          console.error(`❌ Channel ${channelId} is not text-based.`);
+          console.log(`✅ Sent update to ${channelId}`);
         }
       } catch (err) {
-        console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
+        console.error(`❌ Error sending to ${channelId}:`, err.message);
       }
     }
 
   } catch (err) {
-    console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
+    console.error('⚠️ Error fetching latest video:', err.message);
   }
 }
 
@@ -129,22 +118,17 @@ async function getChannelId(handle) {
   const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
 
-  if (!channelId) {
-    console.error('❌ Could not find channel.');
-    return;
-  }
+  if (!channelId) return console.error('❌ Channel not found.');
+
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-  if (!uploadsPlaylistId) {
-    console.error('❌ Could not find uploads playlist.');
-    return;
-  }
+  if (!uploadsPlaylistId) return console.error('❌ Uploads playlist not found.');
+
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
-
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Every 1 min
+  }, 60 * 1000);
 })();
