@@ -85,11 +85,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
             content: `CRAZY just posted a video!`,
             embeds: [{
               color: 0xff0000,
-              author: {
-                name: 'YouTube',
-                icon_url: 'https://www.iconpacks.net/icons/2/free-youtube-logo-icon-2431-thumb.png'
-              },
-              description: 'CRAZY·亗',
+              description: `**YouTube**\nCRAZY·亗`,
               title: title,
               url: url,
               image: {
@@ -147,5 +143,5 @@ async function getChannelId(handle) {
 
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // Every 1 minute
+  }, 60 * 1000); // Every 1 min
 })();
