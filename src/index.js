@@ -52,16 +52,16 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
+      order: 'desc',
     });
 
-    if (!response.data.items || response.data.items.length === 0) {
-      console.log('❌ No videos in the playlist.');
+    const video = response.data.items[0];
+    if (!video) {
+      console.log('❌ No video found in uploads playlist.');
       return;
     }
 
-    const video = response.data.items[0];
     const videoId = video.snippet.resourceId.videoId;
-
     if (videoId === lastVideoId) {
       console.log('🔁 No new video detected.');
       return;
@@ -82,20 +82,20 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
+            content: `CRAZY just posted a video!\n${url}`,
             embeds: [
               {
-                title: title,
-                url: url,
-                image: { url: thumbnail },
-                color: 0xff0000,
                 author: {
                   name: 'YouTube',
+                  icon_url: 'https://www.youtube.com/s/desktop/8e2c99b4/img/favicon_144x144.png'
                 },
-                footer: {
-                  text: 'CRAZY·༗',
-                },
-              },
-            ],
+                title: title,
+                url: url,
+                description: 'CRAZY·亗',
+                image: { url: thumbnail },
+                color: 0xff0000
+              }
+            ]
           });
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
@@ -105,6 +105,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
+
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video from playlist:', err.message);
   }
@@ -147,11 +148,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // Every 1 min
-})();
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('👋 Gracefully shutting down');
-  client.destroy();
-  process.exit();
-})
+})()
