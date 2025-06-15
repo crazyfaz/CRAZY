@@ -8,7 +8,6 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep alive endpoint
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -16,7 +15,6 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord client setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -27,13 +25,11 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube API setup
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-// File-based tracking of posted videos
 const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
 
@@ -75,7 +71,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const videoId = video.snippet.resourceId.videoId;
 
-    // Check if already posted
     if (postedVideos.includes(videoId)) {
       console.log('🔁 Video already posted before.');
       return;
@@ -84,11 +79,9 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
-    const publishedDate = new Date(video.snippet.publishedAt).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+
+    const publishedAt = new Date(video.snippet.publishedAt);
+    const dateString = publishedAt.toLocaleDateString('en-GB'); // DD/MM/YYYY
 
     console.log(`🎬 New video: ${title} (${url})`);
 
@@ -113,13 +106,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 },
                 color: 0xff0000,
                 footer: {
-                  text: `Uploaded on: ${publishedDate}`
+                  text: dateString
                 }
               },
             ],
           });
 
-          // Save video ID after posting
           postedVideos.push(videoId);
           fs.writeFileSync(POSTED_FILE, JSON.stringify(postedVideos, null, 2));
 
