@@ -1,8 +1,6 @@
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -33,17 +31,7 @@ const youtube = google.youtube({
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-// File-based tracking of posted videos
-const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
-let postedVideos = [];
-
-try {
-  if (fs.existsSync(POSTED_FILE)) {
-    postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
-  }
-} catch (err) {
-  console.error('⚠️ Failed to load posted_videos.json:', err.message);
-}
+let lastVideoId = null;
 
 async function getUploadsPlaylistId(channelId) {
   try {
@@ -74,13 +62,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
     const videoId = video.snippet.resourceId.videoId;
-
-    // Check if already posted
-    if (postedVideos.includes(videoId)) {
-      console.log('🔁 Video already posted before.');
+    if (videoId === lastVideoId) {
+      console.log('🔁 No new video detected.');
       return;
     }
 
+    lastVideoId = videoId;
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
@@ -93,25 +80,21 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just uploaded a video!\n${url}`,
+            content: `CRAZY just uploaded a video!`,
             embeds: [
               {
                 author: {
                   name: 'YouTube',
-                  icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
+                  icon_url: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg'
                 },
                 title: 'CRAZY·亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
+                thumbnail: { url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png' },
                 color: 0xff0000,
               },
             ],
           });
-
-          // Save video ID after posting
-          postedVideos.push(videoId);
-          fs.writeFileSync(POSTED_FILE, JSON.stringify(postedVideos, null, 2));
-
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
           console.error(`❌ Channel ${channelId} is not text-based.`);
