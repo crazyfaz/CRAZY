@@ -103,6 +103,9 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 title: 'CRAZY·亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
+                thumbnail: {
+                  url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png' // 🔺 logo in top-right corner
+                },
                 color: 0xff0000,
               },
             ],
