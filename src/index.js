@@ -1,6 +1,8 @@
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -31,7 +33,17 @@ const youtube = google.youtube({
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-let lastVideoId = null;
+// File-based tracking of posted videos
+const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
+let postedVideos = [];
+
+try {
+  if (fs.existsSync(POSTED_FILE)) {
+    postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
+  }
+} catch (err) {
+  console.error('⚠️ Failed to load posted_videos.json:', err.message);
+}
 
 async function getUploadsPlaylistId(channelId) {
   try {
@@ -62,12 +74,13 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
     const videoId = video.snippet.resourceId.videoId;
-    if (videoId === lastVideoId) {
-      console.log('🔁 No new video detected.');
+
+    // Check if already posted
+    if (postedVideos.includes(videoId)) {
+      console.log('🔁 Video already posted before.');
       return;
     }
 
-    lastVideoId = videoId;
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
@@ -94,6 +107,11 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
               },
             ],
           });
+
+          // Save video ID after posting
+          postedVideos.push(videoId);
+          fs.writeFileSync(POSTED_FILE, JSON.stringify(postedVideos, null, 2));
+
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
           console.error(`❌ Channel ${channelId} is not text-based.`);
@@ -146,4 +164,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 min
-})()
+})();
