@@ -84,6 +84,11 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
+    const publishedDate = new Date(video.snippet.publishedAt).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
     console.log(`🎬 New video: ${title} (${url})`);
 
@@ -104,9 +109,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
                 thumbnail: {
-                  url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png' // 🔺 logo in top-right corner
+                  url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png'
                 },
                 color: 0xff0000,
+                footer: {
+                  text: `Uploaded on: ${publishedDate}`
+                }
               },
             ],
           });
