@@ -1,12 +1,13 @@
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Keep alive endpoint
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
@@ -14,7 +15,6 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-// Discord client setup
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
@@ -25,13 +25,21 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// YouTube API setup
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-let lastVideoId = null;
+const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
+let postedVideos = [];
+
+try {
+  if (fs.existsSync(POSTED_FILE)) {
+    postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
+  }
+} catch (err) {
+  console.error('⚠️ Failed to load posted_videos.json:', err.message);
+}
 
 async function getUploadsPlaylistId(channelId) {
   try {
@@ -62,12 +70,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
     const videoId = video.snippet.resourceId.videoId;
-    if (videoId === lastVideoId) {
-      console.log('🔁 No new video detected.');
+
+    if (postedVideos.includes(videoId)) {
+      console.log('🔁 Video already posted before.');
       return;
     }
 
-    lastVideoId = videoId;
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
@@ -80,21 +88,24 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `CRAZY just uploaded a video!`,
+            content: `CRAZY just uploaded a video!\n${url}`,
             embeds: [
               {
                 author: {
-                  name: 'YouTube',
-                  icon_url: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg'
+                  name: 'CRAZY·亗',
+                  icon_url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png'
                 },
                 title: 'CRAZY·亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
-                thumbnail: { url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png' },
                 color: 0xff0000,
               },
             ],
           });
+
+          postedVideos.push(videoId);
+          fs.writeFileSync(POSTED_FILE, JSON.stringify(postedVideos, null, 2));
+
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
           console.error(`❌ Channel ${channelId} is not text-based.`);
@@ -146,5 +157,5 @@ async function getChannelId(handle) {
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // every 1 min
+  }, 60 * 1000);
 })();
