@@ -102,7 +102,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
                 thumbnail: {
-                  url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png'
+                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png'
                 },
                 color: 0xff0000,
                 footer: {
