@@ -41,6 +41,16 @@ try {
   console.error('⚠️ Failed to load posted_videos.json:', err.message);
 }
 
+async function savePostedVideos(data) {
+  try {
+    fs.writeFileSync(POSTED_FILE, JSON.stringify(data, null, 2));
+    console.log('💾 Saved videos:', data);
+    console.log('🕒 Saved at:', new Date().toLocaleString());
+  } catch (err) {
+    console.error('⚠️ Failed to save posted_videos.json:', err.message);
+  }
+}
+
 async function getUploadsPlaylistId(channelId) {
   try {
     const res = await youtube.channels.list({
@@ -56,6 +66,8 @@ async function getUploadsPlaylistId(channelId) {
 
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
+    console.log('⏱️ Checking for new video at:', new Date().toLocaleString());
+
     const res = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
@@ -70,7 +82,24 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     }
 
     const videoId = video.snippet.resourceId.videoId;
+    const publishedAt = new Date(video.snippet.publishedAt);
+    const today = new Date();
+    const dateString = publishedAt.toLocaleDateString('en-GB'); // DD/MM/YYYY
 
+    console.log('🔍 Checking if already posted:', videoId);
+    console.log('🧠 Stored video IDs:', postedVideos);
+
+    // Only post if uploaded today
+    if (
+      publishedAt.getDate() !== today.getDate() ||
+      publishedAt.getMonth() !== today.getMonth() ||
+      publishedAt.getFullYear() !== today.getFullYear()
+    ) {
+      console.log('📅 Video is not from today. Skipping post.');
+      return;
+    }
+
+    // Avoid repost
     if (postedVideos.includes(videoId)) {
       console.log('🔁 Video already posted before.');
       return;
@@ -80,9 +109,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    const publishedAt = new Date(video.snippet.publishedAt);
-    const dateString = publishedAt.toLocaleDateString('en-GB'); // DD/MM/YYYY
-
     console.log(`🎬 New video: ${title} (${url})`);
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
@@ -91,7 +117,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         const ch = await client.channels.fetch(channelId);
         if (ch && ch.isTextBased()) {
           await ch.send({
-            content: `just uploaded a video!\n${url}`,
+            content: `CRAZY just uploaded a video!\n${url}`,
             embeds: [
               {
                 author: {
@@ -102,7 +128,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
                 thumbnail: {
-                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png'
+                  url: 'https://i.postimg.cc/2SSSsgWJ/20250615-145728.png'
                 },
                 color: 0xff0000,
                 footer: {
@@ -113,7 +139,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
           });
 
           postedVideos.push(videoId);
-          fs.writeFileSync(POSTED_FILE, JSON.stringify(postedVideos, null, 2));
+          await savePostedVideos(postedVideos);
 
           console.log(`✅ Sent update to channel: ${channelId}`);
         } else {
@@ -166,5 +192,5 @@ async function getChannelId(handle) {
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // every 1 min
+  }, 60 * 1000); // every 1 minute
 })();
