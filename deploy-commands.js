@@ -21,14 +21,14 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log('⏳ Refreshing application (/) commands...');
+    console.log('⏳ Refreshing application (/) commands for GUILD...');
 
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands },
     );
 
-    console.log('✅ Successfully reloaded application (/) commands.');
+    console.log('✅ Successfully reloaded guild application (/) commands.');
   } catch (error) {
     console.error('❌ Failed to deploy commands:', error);
   }
