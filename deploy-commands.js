@@ -22,13 +22,18 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 (async () => {
   try {
     console.log('⏳ Refreshing application (/) commands for GUILD...');
-
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands },
+      { body: commands }
     );
+    console.log('✅ Successfully reloaded GUILD application (/) commands.');
 
-    console.log('✅ Successfully reloaded guild application (/) commands.');
+    console.log('🌐 Publishing GLOBAL application (/) commands...');
+    await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands }
+    );
+    console.log('✅ Successfully published GLOBAL application (/) commands.');
   } catch (error) {
     console.error('❌ Failed to deploy commands:', error);
   }
