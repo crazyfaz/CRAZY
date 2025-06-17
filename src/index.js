@@ -1,11 +1,9 @@
-require('dotenv').config();
-require('./deploy'); // 👈 Auto-deploy slash commands at startup
-
 const express = require('express');
 const { google } = require('googleapis');
-const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +19,6 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// 🆕 Slash command loader
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -36,7 +33,6 @@ if (fs.existsSync(commandsPath)) {
   }
 }
 
-// 🆕 Slash command handler
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -51,17 +47,35 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
+
+  const commands = client.commands.map(cmd => cmd.data.toJSON());
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+  try {
+    console.log('⏳ Refreshing application (/) commands for GUILD...');
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands }
+    );
+
+    console.log('⏳ Deploying global application (/) commands...');
+    await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands }
+    );
+
+    console.log('✅ Successfully reloaded guild and global (/) commands.');
+  } catch (err) {
+    console.error('❌ Failed to reload slash commands:', err);
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-const youtube = google.youtube({
-  version: 'v3',
-  auth: process.env.YOUTUBE_API_KEY,
-});
-
+// ========== YOUTUBE UPLOAD CHECKER ==========
+const youtube = google.youtube({ version: 'v3', auth: process.env.YOUTUBE_API_KEY });
 const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
 
@@ -116,7 +130,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
     const today = new Date();
-    const dateString = publishedAt.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const dateString = publishedAt.toLocaleDateString('en-GB');
 
     console.log('🔍 Checking if already posted:', videoId);
     console.log('🧠 Stored video IDs:', postedVideos);
@@ -154,7 +168,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                   name: 'YouTube',
                   icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
                 },
-                title: 'CRAZY·亗',
+                title: 'CRAZY 亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
                 thumbnail: {
@@ -179,7 +193,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
-
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video:', err.message);
   }
