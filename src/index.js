@@ -1,9 +1,11 @@
+require('dotenv').config();
+require('./deploy'); // 👈 Auto-deploy slash commands at startup
+
 const express = require('express');
 const { google } = require('googleapis');
 const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +23,7 @@ const client = new Client({
 
 // 🆕 Slash command loader
 client.commands = new Collection();
-const commandsPath = path.join(__dirname, 'src/commands');
+const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
   const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
   for (const file of commandFiles) {
@@ -221,4 +223,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})();
+})()
