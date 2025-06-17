@@ -1,6 +1,6 @@
 const express = require('express');
 const { google } = require('googleapis');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -17,6 +17,36 @@ app.listen(PORT, () => {
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+});
+
+// 🆕 Slash command loader
+client.commands = new Collection();
+const commandsPath = path.join(__dirname, 'src/commands');
+if (fs.existsSync(commandsPath)) {
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    if (command.data && command.execute) {
+      client.commands.set(command.data.name, command);
+    } else {
+      console.warn(`⚠️ Invalid command file: ${file}`);
+    }
+  }
+}
+
+// 🆕 Slash command handler
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = client.commands.get(interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(`❌ Error executing command '${interaction.commandName}':`, error);
+    await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
+  }
 });
 
 client.once('ready', () => {
@@ -89,7 +119,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     console.log('🔍 Checking if already posted:', videoId);
     console.log('🧠 Stored video IDs:', postedVideos);
 
-    // Only post if uploaded today
     if (
       publishedAt.getDate() !== today.getDate() ||
       publishedAt.getMonth() !== today.getMonth() ||
@@ -99,7 +128,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       return;
     }
 
-    // Avoid repost
     if (postedVideos.includes(videoId)) {
       console.log('🔁 Video already posted before.');
       return;
