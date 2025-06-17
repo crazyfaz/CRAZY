@@ -2,9 +2,12 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('shenji')
-    .setDescription('Sends CRAZY Shenji guide.'),
+    .setName('ping')
+    .setDescription('Replies with Pong and your latency!'),
+    
   async execute(interaction) {
-    await interaction.reply('🛡️ Here is the CRAZY Shenji gear guide!');
+    const sent = await interaction.reply({ content: 'Pinging...', fetchReply: true });
+    const latency = sent.createdTimestamp - interaction.createdTimestamp;
+    await interaction.editReply(`🏓 Pong! Latency is ${latency}ms`);
   }
 };
