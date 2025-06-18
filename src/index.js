@@ -19,6 +19,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
+// Load slash commands
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -33,17 +34,41 @@ if (fs.existsSync(commandsPath)) {
   }
 }
 
+// Load buttons
+client.buttons = new Collection();
+const buttonsPath = path.join(__dirname, 'buttons');
+if (fs.existsSync(buttonsPath)) {
+  const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
+  for (const file of buttonFiles) {
+    const button = require(path.join(buttonsPath, file));
+    if (button.customId && button.execute) {
+      client.buttons.set(button.customId, button);
+    } else {
+      console.warn(`⚠️ Invalid button file: ${file}`);
+    }
+  }
+}
+
+// Interaction handler
 client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(`❌ Error executing command '${interaction.commandName}':`, error);
-    await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      console.error(`❌ Error executing command '${interaction.commandName}':`, error);
+      await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
+    }
+  } else if (interaction.isButton()) {
+    const button = client.buttons.get(interaction.customId);
+    if (!button) return;
+    try {
+      await button.execute(interaction, client);
+    } catch (error) {
+      console.error(`❌ Error executing button '${interaction.customId}':`, error);
+      await interaction.reply({ content: '❌ There was an error with this button.', ephemeral: true });
+    }
   }
 });
 
@@ -236,4 +261,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})()
+})();
