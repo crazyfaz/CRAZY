@@ -21,19 +21,22 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log('⏳ Refreshing application (/) commands for GUILD...');
+    console.log('⏳ Deploying global application (/) commands...');
+
+    // 🔥 Clear guild commands (if already used before)
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
+      { body: [] }
     );
-    console.log('✅ Successfully reloaded GUILD application (/) commands.');
+    console.log('🗑️ Cleared guild-specific commands.');
 
-    console.log('🌐 Publishing GLOBAL application (/) commands...');
+    // ✅ Register global commands
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands }
     );
-    console.log('✅ Successfully published GLOBAL application (/) commands.');
+
+    console.log('✅ Successfully deployed global application (/) commands.');
   } catch (error) {
     console.error('❌ Failed to deploy commands:', error);
   }
