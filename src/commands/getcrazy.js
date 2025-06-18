@@ -36,6 +36,7 @@ module.exports = {
   async execute(interaction) {
     const apiKey = process.env.GIPHY_API_KEY;
     const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+    const user = interaction.user || interaction.member.user;
 
     await interaction.reply({
       content: `😜 **Your Crazy Task:** ${challenge.task}\n*Did you complete it?* Reply with **yes** or **no** below...`,
@@ -43,7 +44,7 @@ module.exports = {
     });
 
     const filter = msg =>
-      msg.author.id === interaction.user.id &&
+      msg.author.id === user.id &&
       ["yes", "no"].includes(msg.content.toLowerCase());
 
     const collector = interaction.channel.createMessageCollector({
