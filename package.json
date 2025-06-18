@@ -4,7 +4,8 @@
   "description": "A Discord bot that announces the latest YouTube videos.",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "deploy": "node deploy.commands.js"
   },
   "dependencies": {
     "discord.js": "^14.11.0",
