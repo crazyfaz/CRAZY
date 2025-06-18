@@ -1,30 +1,22 @@
-const { SlashCommandBuilder } = require('discord.js');
-const getcrazy = require('../commands/getcrazy');
-
 module.exports = {
   customId: 'start_crazy_game',
 
   async execute(interaction, client) {
+    const command = client.commands.get('getcrazy');
+    if (!command) {
+      return interaction.reply({
+        content: '❌ Could not find the crazy game!',
+        ephemeral: true
+      });
+    }
+
     try {
-      // Defer the update so the button doesn't timeout
-      await interaction.deferUpdate();
-
-      // Create a dummy object that mimics a chat input interaction
-      const fakeInteraction = {
-        ...interaction,
-        reply: (...args) => interaction.channel.send(...args),
-        followUp: (...args) => interaction.channel.send(...args),
-        user: interaction.user,
-        channel: interaction.channel,
-        client: client,
-      };
-
-      await getcrazy.execute(fakeInteraction, client);
+      await command.execute(interaction, client);
     } catch (err) {
-      console.error('startcrazy.js error:', err.message);
-      await interaction.followUp({
+      console.error('❌ Error in startcrazy button:', err);
+      await interaction.reply({
         content: '❌ An error occurred while starting the crazy game.',
-        ephemeral: true,
+        ephemeral: true
       });
     }
   }
