@@ -26,7 +26,6 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// ====== Slash Commands Loader ======
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -41,7 +40,7 @@ if (fs.existsSync(commandsPath)) {
   }
 }
 
-// ====== Button Handlers Loader ======
+// Load buttons
 client.buttons = new Collection();
 const buttonsPath = path.join(__dirname, 'buttons');
 if (fs.existsSync(buttonsPath)) {
@@ -56,25 +55,34 @@ if (fs.existsSync(buttonsPath)) {
   }
 }
 
-// ====== Interactions Handler ======
 client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
+
     try {
       await command.execute(interaction, client);
     } catch (error) {
       console.error(`❌ Error executing command '${interaction.commandName}':`, error);
-      await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
+      await interaction.reply({
+        content: '❌ There was an error executing this command.',
+        ephemeral: true
+      });
     }
-  } else if (interaction.isButton()) {
+  }
+
+  if (interaction.isButton()) {
     const button = client.buttons.get(interaction.customId);
     if (!button) return;
+
     try {
       await button.execute(interaction, client);
     } catch (error) {
       console.error(`❌ Error executing button '${interaction.customId}':`, error);
-      await interaction.reply({ content: '❌ There was an error executing this button.', ephemeral: true });
+      await interaction.reply({
+        content: '❌ There was an error with this button.',
+        ephemeral: true
+      });
     }
   }
 });
@@ -181,6 +189,8 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
+
+    console.log(`🎬 New video: ${title} (${url})`);
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
     for (const channelId of channelIds) {
