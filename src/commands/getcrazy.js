@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 
@@ -37,15 +37,20 @@ module.exports = {
     const apiKey = process.env.GIPHY_API_KEY;
     const challenge = challenges[Math.floor(Math.random() * challenges.length)];
 
-    // Ask the challenge
     await interaction.reply({
       content: `😜 **Your Crazy Task:** ${challenge.task}\n*Did you complete it?* Reply with **yes** or **no** below...`,
       ephemeral: false
     });
 
-    // Await reply from same user
-    const filter = msg => msg.author.id === interaction.user.id && ["yes", "no"].includes(msg.content.toLowerCase());
-    const collector = interaction.channel.createMessageCollector({ filter, time: 15000, max: 1 });
+    const filter = msg =>
+      msg.author.id === interaction.user.id &&
+      ["yes", "no"].includes(msg.content.toLowerCase());
+
+    const collector = interaction.channel.createMessageCollector({
+      filter,
+      time: 15000,
+      max: 1
+    });
 
     collector.on('collect', async msg => {
       const success = msg.content.toLowerCase() === "yes";
@@ -77,7 +82,14 @@ module.exports = {
           .setColor(success ? 0x00FF66 : 0xFF0033)
           .setFooter({ text: `Challenge: ${challenge.task}` });
 
-        await msg.reply({ embeds: [embed] });
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('start_crazy_game')
+            .setLabel('🔁 Start New Game')
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await msg.reply({ embeds: [embed], components: [row] });
 
       } catch (err) {
         console.error('GIPHY API error:', err.message);
@@ -91,4 +103,4 @@ module.exports = {
       }
     });
   },
-};
+}
