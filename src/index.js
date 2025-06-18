@@ -1,3 +1,5 @@
+// CRAZY/src/index.js
+
 const express = require('express');
 const { google } = require('googleapis');
 const {
@@ -6,7 +8,7 @@ const {
   Collection,
   Events,
   REST,
-  Routes
+  Routes,
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +20,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => {
   res.send('✅ Crazy Bot is running!');
 });
+
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
@@ -26,10 +29,13 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
+// ===== Load Slash Commands =====
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter(file => file.endsWith('.js'));
   for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
@@ -40,53 +46,49 @@ if (fs.existsSync(commandsPath)) {
   }
 }
 
-// Load buttons
+// ===== Load Button Handlers =====
 client.buttons = new Collection();
 const buttonsPath = path.join(__dirname, 'buttons');
 if (fs.existsSync(buttonsPath)) {
-  const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
+  const buttonFiles = fs
+    .readdirSync(buttonsPath)
+    .filter(file => file.endsWith('.js'));
   for (const file of buttonFiles) {
     const button = require(path.join(buttonsPath, file));
     if (button.customId && button.execute) {
       client.buttons.set(button.customId, button);
     } else {
-      console.warn(`⚠️ Invalid button file: ${file}`);
+      console.warn(`⚠️ Invalid button handler: ${file}`);
     }
   }
 }
 
+// ===== Interaction Handler =====
 client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
-
     try {
       await command.execute(interaction, client);
     } catch (error) {
       console.error(`❌ Error executing command '${interaction.commandName}':`, error);
       await interaction.reply({
         content: '❌ There was an error executing this command.',
-        ephemeral: true
+        ephemeral: true,
       });
     }
-  }
-
-  if (interaction.isButton()) {
+  } else if (interaction.isButton()) {
     const button = client.buttons.get(interaction.customId);
-    if (!button) return;
-
+    if (!button) return console.warn(`⚠️ No handler for button ID: ${interaction.customId}`);
     try {
       await button.execute(interaction, client);
     } catch (error) {
-      console.error(`❌ Error executing button '${interaction.customId}':`, error);
-      await interaction.reply({
-        content: '❌ There was an error with this button.',
-        ephemeral: true
-      });
+      console.error(`❌ Error in button '${interaction.customId}':`, error);
     }
   }
 });
 
+// ===== On Ready & Slash Deployment =====
 client.once('ready', async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
 
@@ -114,8 +116,13 @@ client.once('ready', async () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// ========== YOUTUBE UPLOAD CHECKER ==========
-const youtube = google.youtube({ version: 'v3', auth: process.env.YOUTUBE_API_KEY });
+// ====== YouTube Upload Checker ======
+
+const youtube = google.youtube({
+  version: 'v3',
+  auth: process.env.YOUTUBE_API_KEY,
+});
+
 const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
 
@@ -190,8 +197,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
 
-    console.log(`🎬 New video: ${title} (${url})`);
-
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
     for (const channelId of channelIds) {
       try {
@@ -203,18 +208,16 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
               {
                 author: {
                   name: 'YouTube',
-                  icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
+                  icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
                 },
                 title: 'CRAZY 亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
                 thumbnail: {
-                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png'
+                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png',
                 },
                 color: 0xff0000,
-                footer: {
-                  text: dateString
-                }
+                footer: { text: dateString },
               },
             ],
           });
@@ -230,7 +233,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
-
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video:', err.message);
   }
@@ -274,4 +276,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})()
+})();
