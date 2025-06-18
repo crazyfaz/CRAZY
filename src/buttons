@@ -1,0 +1,8 @@
+module.exports = {
+  customId: 'start_crazy_game',
+  async execute(interaction, client) {
+    const command = client.commands.get('getcrazy');
+    if (command) await command.execute(interaction);
+    else await interaction.reply({ content: '❌ Game command not found.', ephemeral: true });
+  }
+}
