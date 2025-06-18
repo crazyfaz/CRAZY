@@ -1,6 +1,13 @@
 const express = require('express');
 const { google } = require('googleapis');
-const { Client, GatewayIntentBits, Collection, Events, REST, Routes } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  Events,
+  REST,
+  Routes
+} = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -19,7 +26,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// Load slash commands
+// ====== Slash Commands Loader ======
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -34,7 +41,7 @@ if (fs.existsSync(commandsPath)) {
   }
 }
 
-// Load buttons
+// ====== Button Handlers Loader ======
 client.buttons = new Collection();
 const buttonsPath = path.join(__dirname, 'buttons');
 if (fs.existsSync(buttonsPath)) {
@@ -49,13 +56,13 @@ if (fs.existsSync(buttonsPath)) {
   }
 }
 
-// Interaction handler
+// ====== Interactions Handler ======
 client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
     if (!command) return;
     try {
-      await command.execute(interaction);
+      await command.execute(interaction, client);
     } catch (error) {
       console.error(`❌ Error executing command '${interaction.commandName}':`, error);
       await interaction.reply({ content: '❌ There was an error executing this command.', ephemeral: true });
@@ -67,7 +74,7 @@ client.on(Events.InteractionCreate, async interaction => {
       await button.execute(interaction, client);
     } catch (error) {
       console.error(`❌ Error executing button '${interaction.customId}':`, error);
-      await interaction.reply({ content: '❌ There was an error with this button.', ephemeral: true });
+      await interaction.reply({ content: '❌ There was an error executing this button.', ephemeral: true });
     }
   }
 });
@@ -157,9 +164,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const today = new Date();
     const dateString = publishedAt.toLocaleDateString('en-GB');
 
-    console.log('🔍 Checking if already posted:', videoId);
-    console.log('🧠 Stored video IDs:', postedVideos);
-
     if (
       publishedAt.getDate() !== today.getDate() ||
       publishedAt.getMonth() !== today.getMonth() ||
@@ -177,8 +181,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
-
-    console.log(`🎬 New video: ${title} (${url})`);
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
     for (const channelId of channelIds) {
@@ -218,6 +220,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
+
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video:', err.message);
   }
@@ -261,4 +264,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})();
+})()
