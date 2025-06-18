@@ -1,5 +1,3 @@
-// CRAZY/src/index.js
-
 const express = require('express');
 const { google } = require('googleapis');
 const {
@@ -33,9 +31,7 @@ const client = new Client({
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
-  const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter(file => file.endsWith('.js'));
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
   for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
@@ -50,9 +46,7 @@ if (fs.existsSync(commandsPath)) {
 client.buttons = new Collection();
 const buttonsPath = path.join(__dirname, 'buttons');
 if (fs.existsSync(buttonsPath)) {
-  const buttonFiles = fs
-    .readdirSync(buttonsPath)
-    .filter(file => file.endsWith('.js'));
+  const buttonFiles = fs.readdirSync(buttonsPath).filter(file => file.endsWith('.js'));
   for (const file of buttonFiles) {
     const button = require(path.join(buttonsPath, file));
     if (button.customId && button.execute) {
@@ -78,8 +72,17 @@ client.on(Events.InteractionCreate, async interaction => {
       });
     }
   } else if (interaction.isButton()) {
-    const button = client.buttons.get(interaction.customId);
-    if (!button) return console.warn(`⚠️ No handler for button ID: ${interaction.customId}`);
+    const button = [...client.buttons.values()].find(handler =>
+      typeof handler.customId === 'string'
+        ? handler.customId === interaction.customId
+        : handler.customId instanceof RegExp && handler.customId.test(interaction.customId)
+    );
+
+    if (!button) {
+      console.warn(`⚠️ No handler for button ID: ${interaction.customId}`);
+      return;
+    }
+
     try {
       await button.execute(interaction, client);
     } catch (error) {
@@ -117,7 +120,6 @@ client.once('ready', async () => {
 client.login(process.env.DISCORD_TOKEN);
 
 // ====== YouTube Upload Checker ======
-
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
@@ -276,4 +278,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})();
+})()
