@@ -1,33 +1,31 @@
-// CRAZY/src/buttons/startcrazy.js
+const { SlashCommandBuilder } = require('discord.js');
+const getcrazy = require('../commands/getcrazy');
 
 module.exports = {
   customId: 'start_crazy_game',
 
   async execute(interaction, client) {
-    console.log(`[BUTTON] start_crazy_game clicked by ${interaction.user.tag}`);
-
-    // Defer the update to acknowledge the button click
-    await interaction.deferUpdate();
-
-    // Fetch the command again
-    const command = client.commands.get('getcrazy');
-    if (!command) {
-      console.error('❌ Could not find the getcrazy command in client.commands');
-      return interaction.followUp({
-        content: '❌ The crazy game command could not be found.',
-        ephemeral: true
-      });
-    }
-
     try {
-      // Call the getcrazy command again
-      await command.execute(interaction, client);
+      // Defer the update so the button doesn't timeout
+      await interaction.deferUpdate();
+
+      // Create a dummy object that mimics a chat input interaction
+      const fakeInteraction = {
+        ...interaction,
+        reply: (...args) => interaction.channel.send(...args),
+        followUp: (...args) => interaction.channel.send(...args),
+        user: interaction.user,
+        channel: interaction.channel,
+        client: client,
+      };
+
+      await getcrazy.execute(fakeInteraction, client);
     } catch (err) {
-      console.error('❌ Error while executing getcrazy from button click:', err);
+      console.error('startcrazy.js error:', err.message);
       await interaction.followUp({
         content: '❌ An error occurred while starting the crazy game.',
-        ephemeral: true
+        ephemeral: true,
       });
     }
   }
-}
+};
