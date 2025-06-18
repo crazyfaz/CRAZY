@@ -2,71 +2,87 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 require('dotenv').config();
 
-// Cache genre name-to-ID mapping (TMDB uses IDs)
-let genreMap = {};
+const shownMovies = {};
 
-async function fetchGenres(apiKey) {
-  const res = await axios.get(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=en-US`);
-  const genres = res.data.genres;
-  genreMap = {};
-  for (const g of genres) {
-    genreMap[g.name.toLowerCase()] = g.id;
-  }
-}
+// Language and region mapping
+const languageMap = {
+  english: 'en', hindi: 'hi', french: 'fr', spanish: 'es', japanese: 'ja',
+  korean: 'ko', german: 'de', tamil: 'ta', telugu: 'te', malayalam: 'ml'
+};
+
+const regionMap = {
+  india: 'IN', usa: 'US', uk: 'GB', france: 'FR', japan: 'JP', germany: 'DE'
+};
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('movie')
-    .setDescription('🎬 Get a random movie suggestion by genre and year')
+    .setDescription('🎬 Get a top-rated movie suggestion with filters')
     .addStringOption(option =>
       option.setName('type')
-        .setDescription('Genre(s), comma separated (e.g. horror,thriller)')
-        .setRequired(false))
-    .addIntegerOption(option =>
+        .setDescription('Genre (e.g. horror, thriller, comedy)')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
       option.setName('year')
-        .setDescription('Release year')
-        .setRequired(false)),
+        .setDescription('Release year (e.g. 2020)')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option.setName('language')
+        .setDescription('Language (e.g. Hindi, English)')
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option.setName('region')
+        .setDescription('Region (e.g. India, USA)')
+        .setRequired(false)
+    ),
 
   async execute(interaction) {
     const apiKey = process.env.TMDB_API_KEY;
-    const genreInput = interaction.options.getString('type');
-    const year = interaction.options.getInteger('year');
+    const genre = interaction.options.getString('type');
+    const year = interaction.options.getString('year');
+    const langInput = interaction.options.getString('language');
+    const regionInput = interaction.options.getString('region');
+
+    const userId = interaction.user.id;
+
+    // Convert to TMDB codes
+    const language = langInput ? languageMap[langInput.toLowerCase()] : 'en';
+    const region = regionInput ? regionMap[regionInput.toLowerCase()] : 'US';
 
     try {
-      if (Object.keys(genreMap).length === 0) {
-        await fetchGenres(apiKey);
-      }
+      const genreRes = await axios.get(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=en-US`);
+      const genreList = genreRes.data.genres;
+      const genreId = genre
+        ? genreList.find(g => g.name.toLowerCase() === genre.toLowerCase())?.id
+        : null;
 
-      // Convert genre names to IDs
-      let genreIds = [];
-      if (genreInput) {
-        const genres = genreInput.split(',').map(g => g.trim().toLowerCase());
-        genreIds = genres.map(g => genreMap[g]).filter(Boolean);
+      const url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=1000&page=1`
+        + (genreId ? `&with_genres=${genreId}` : '')
+        + (year ? `&primary_release_year=${year}` : '')
+        + (language ? `&with_original_language=${language}` : '')
+        + (region ? `&region=${region}` : '');
 
-        if (genreIds.length === 0) {
-          return await interaction.reply('❌ Invalid genre(s) provided.');
-        }
-      }
-
-      // Discover API query
-      const query = {
-        api_key: apiKey,
-        language: 'en-US',
-        sort_by: 'vote_average.desc',
-        vote_count_gte: 100,
-        with_genres: genreIds.join(','),
-        page: 1
-      };
-      if (year) query.primary_release_year = year;
-
-      const res = await axios.get('https://api.themoviedb.org/3/discover/movie', { params: query });
-      const movies = res.data.results;
+      const response = await axios.get(url);
+      const movies = response.data.results;
 
       if (!movies.length) {
-        return await interaction.reply('😢 No matching movies found. Try different filters!');
+        return interaction.reply('❌ No matching movies found. Try different filters.');
       }
 
-      const movie = movies[Math.floor(Math.random() * movies.length)];
+      if (!shownMovies[userId]) shownMovies[userId] = [];
+
+      const unseenMovies = movies.filter(m => !shownMovies[userId].includes(m.id));
+
+      if (unseenMovies.length === 0) {
+        shownMovies[userId] = [];
+        return interaction.reply("✅ You've seen all top movies matching those filters! Try again!");
+      }
+
+      const movie = unseenMovies[Math.floor(Math.random() * unseenMovies.length)];
+      shownMovies[userId].push(movie.id);
 
       const embed = new EmbedBuilder()
         .setTitle(`🎬 ${movie.title}`)
@@ -75,7 +91,7 @@ module.exports = {
           { name: '⭐ Rating', value: `${movie.vote_average}/10`, inline: true },
           { name: '📅 Release Date', value: movie.release_date || 'Unknown', inline: true }
         )
-        .setThumbnail(`https://image.tmdb.org/t/p/w500${movie.poster_path}`)
+        .setImage(`https://image.tmdb.org/t/p/w500${movie.poster_path}`)
         .setColor(0x8A2BE2) // Violet
         .setFooter({ text: `Requested by ${interaction.user.username}` });
 
@@ -84,7 +100,7 @@ module.exports = {
     } catch (error) {
       console.error('TMDB error:', error.message);
       await interaction.reply({
-        content: '❌ Failed to fetch movies. Please try again later.',
+        content: '❌ Failed to fetch movie. Please try again later.',
         ephemeral: true
       });
     }
