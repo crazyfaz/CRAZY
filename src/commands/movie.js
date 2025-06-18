@@ -47,7 +47,7 @@ module.exports = {
           { name: '📅 Release Date', value: movie.release_date || 'Unknown', inline: true }
         )
         .setThumbnail(`https://image.tmdb.org/t/p/w500${movie.poster_path}`)
-        .setColor(0xE50914) // Netflix red 💥
+        .setColor(5D00FF) // Random violet 💥
         .setFooter({ text: `Requested by ${interaction.user.username}` });
 
       await interaction.reply({ embeds: [embed] });
