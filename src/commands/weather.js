@@ -22,18 +22,40 @@ module.exports = {
       );
 
       const data = response.data;
+      const weather = data.weather[0].main.toLowerCase();
+      const temp = data.main.temp;
+
+      // 🎨 Dynamic color logic
+      let color = 0x808080; // default gray
+
+      if (weather.includes('rain') || weather.includes('thunderstorm')) {
+        color = 0x778899; // gray
+      } else if (weather.includes('snow')) {
+        color = 0xFFFFFF; // white
+      } else if (weather.includes('cloud')) {
+        color = 0xA9A9A9; // dark gray
+      } else if (temp < 10) {
+        color = 0x1E90FF; // cold blue
+      } else if (temp < 25) {
+        color = 0x87CEEB; // mild sky blue
+      } else if (temp < 32) {
+        color = 0xFFA500; // warm orange
+      } else {
+        color = 0xFF4500; // hot red-orange
+      }
 
       const embed = new EmbedBuilder()
         .setTitle(`☁️ Weather in ${data.name}`)
         .addFields(
-          { name: '🌡 Temperature', value: `${data.main.temp}°C`, inline: true },
+          { name: '🌡 Temperature', value: `${temp}°C`, inline: true },
           { name: '💧 Humidity', value: `${data.main.humidity}%`, inline: true },
           { name: '🌬 Wind Speed', value: `${data.wind.speed} m/s`, inline: true },
           { name: '🌥 Sky', value: `${data.weather[0].description}`, inline: true }
         )
-        .setColor(0x1E90FF)
+        .setColor(color)
         .setThumbnail(`http://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`)
-        .setFooter({ text: `Requested by ${interaction.user.username}` });
+        .setFooter({ text: `Requested by ${interaction.user.username}` })
+        .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
 
