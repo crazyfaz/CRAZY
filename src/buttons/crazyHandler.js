@@ -1,54 +1,61 @@
-const { EmbedBuilder } = require('discord.js');
+const {
+  EmbedBuilder
+} = require('discord.js');
 const axios = require('axios');
-require('dotenv').config();
+const scenarios = require('../utils/crazyScenarios');
+
+const GIPHY_API = process.env.GIPHY_API_KEY;
+
+const winnerKeywords = ["gangster win", "explosion", "badass escape", "money rain"];
+const loserKeywords = ["epic fail", "shot", "arrested", "dark ending"];
 
 module.exports = {
-  async execute(interaction, client) {
-    const customId = interaction.customId;
-    if (!customId.startsWith('crazy_choice_')) return;
+  customId: /^crazy_choice_(.+)$/,
 
-    const choice = customId.replace('crazy_choice_', '');
-    const scenario = client.activeScenario;
+  async execute(interaction) {
+    const choice = interaction.customId.replace('crazy_choice_', '');
 
-    if (!scenario || !scenario.outcomes[choice]) {
-      return interaction.reply({ content: '❌ Unknown choice or scenario expired.', ephemeral: true });
+    // Find the scenario used (assumes it's the last sent by this bot)
+    const scenario = scenarios.find(s => 
+      Object.keys(s.outcomes).includes(choice)
+    );
+
+    if (!scenario) {
+      return interaction.reply({
+        content: "❌ Scenario logic failed. Try again.",
+        ephemeral: true
+      });
     }
 
     const outcome = scenario.outcomes[choice];
-    const keywords = outcome.success
-      ? ["winner", "escape", "gangster win", "fireworks", "survive"]
-      : ["fail", "you died", "trap", "sad gangster", "lost"];
-    const searchTerm = keywords[Math.floor(Math.random() * keywords.length)];
 
+    const keywordList = outcome.success ? winnerKeywords : loserKeywords;
+    const query = keywordList[Math.floor(Math.random() * keywordList.length)];
+
+    let gifUrl = null;
     try {
-      const res = await axios.get(`https://api.giphy.com/v1/gifs/search`, {
+      const res = await axios.get('https://api.giphy.com/v1/gifs/search', {
         params: {
-          api_key: process.env.GIPHY_API_KEY,
-          q: searchTerm,
+          api_key: GIPHY_API,
+          q: query,
           limit: 10,
-          rating: "pg"
+          rating: 'pg-13'
         }
       });
-
       const gifs = res.data.data;
-      const gifUrl = gifs.length > 0
-        ? gifs[Math.floor(Math.random() * gifs.length)].images.original.url
-        : null;
-
-      const embed = new EmbedBuilder()
-        .setTitle(outcome.title)
-        .setDescription(outcome.description)
-        .setImage(gifUrl)
-        .setColor(outcome.success ? 0x00FF66 : 0xFF0033);
-
-      await interaction.update({ embeds: [embed], components: [] });
-
-    } catch (err) {
-      console.error('GIPHY error:', err.message);
-      await interaction.update({
-        content: outcome.description,
-        components: [],
-      });
+      if (gifs.length) {
+        gifUrl = gifs[Math.floor(Math.random() * gifs.length)].images.original.url;
+      }
+    } catch (e) {
+      console.error("GIPHY Error:", e.message);
     }
+
+    const embed = new EmbedBuilder()
+      .setTitle(outcome.title)
+      .setDescription(outcome.description)
+      .setColor(outcome.success ? 0x00FF66 : 0xFF0000)
+      .setImage(gifUrl || null);
+
+    await interaction.reply({ embeds: [embed] });
   }
-}
+};
