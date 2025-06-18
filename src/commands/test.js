@@ -6,6 +6,6 @@ module.exports = {
     .setDescription('Just says hello!'),
 
   async execute(interaction) {
-    await interaction.reply('✅ Hello from your CRAZY bot!');
+    await interaction.reply('Yeah, I am ok with slash command build!');
   }
 }
