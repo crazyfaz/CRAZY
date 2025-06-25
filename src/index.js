@@ -119,12 +119,7 @@ client.once('ready', async () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// ====== YouTube Upload Checker ======
-const youtube = google.youtube({
-  version: 'v3',
-  auth: process.env.YOUTUBE_API_KEY,
-});
-
+// ====== YouTube Upload Checker with API Key Rotation ======
 const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
 
@@ -132,116 +127,111 @@ try {
   if (fs.existsSync(POSTED_FILE)) {
     postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
   }
-} catch (err) {
-  console.error('⚠️ Failed to load posted_videos.json:', err.message);
+} catch (_) {}
+
+const apiKeys = process.env.YOUTUBE_API_KEYS.split(',');
+let currentKeyIndex = 0;
+
+function getYouTubeClient() {
+  return google.youtube({ version: 'v3', auth: apiKeys[currentKeyIndex] });
+}
+
+async function rotateApiKeyAndRetry(task) {
+  const maxTries = apiKeys.length;
+  for (let i = 0; i < maxTries; i++) {
+    const youtube = getYouTubeClient();
+    try {
+      return await task(youtube);
+    } catch (err) {
+      const reason = err?.errors?.[0]?.reason;
+      if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
+        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+        continue;
+      }
+      break; // fail silently for other issues
+    }
+  }
+  return null;
 }
 
 async function savePostedVideos(data) {
   try {
     fs.writeFileSync(POSTED_FILE, JSON.stringify(data, null, 2));
-    console.log('💾 Saved videos:', data);
-    console.log('🕒 Saved at:', new Date().toLocaleString());
-  } catch (err) {
-    console.error('⚠️ Failed to save posted_videos.json:', err.message);
-  }
+  } catch (_) {}
 }
 
 async function getUploadsPlaylistId(channelId) {
-  try {
+  return await rotateApiKeyAndRetry(async youtube => {
     const res = await youtube.channels.list({
       part: ['contentDetails'],
       id: [channelId],
     });
     return res.data.items[0].contentDetails.relatedPlaylists.uploads;
-  } catch (err) {
-    console.error('⚠️ Error fetching uploads playlist:', err.message);
-    return null;
-  }
+  });
 }
 
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
-  try {
-    console.log('⏱️ Checking for new video at:', new Date().toLocaleString());
-
+  const video = await rotateApiKeyAndRetry(async youtube => {
     const res = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'desc',
     });
+    return res.data.items[0];
+  });
 
-    const video = res.data.items[0];
-    if (!video) {
-      console.log('❌ No video found.');
-      return;
-    }
+  if (!video) return;
 
-    const videoId = video.snippet.resourceId.videoId;
-    const publishedAt = new Date(video.snippet.publishedAt);
-    const today = new Date();
-    const dateString = publishedAt.toLocaleDateString('en-GB');
+  const videoId = video.snippet.resourceId.videoId;
+  const publishedAt = new Date(video.snippet.publishedAt);
+  const today = new Date();
 
-    if (
-      publishedAt.getDate() !== today.getDate() ||
-      publishedAt.getMonth() !== today.getMonth() ||
-      publishedAt.getFullYear() !== today.getFullYear()
-    ) {
-      console.log('📅 Video is not from today. Skipping post.');
-      return;
-    }
+  const isToday =
+    publishedAt.getUTCFullYear() === today.getUTCFullYear() &&
+    publishedAt.getUTCMonth() === today.getUTCMonth() &&
+    publishedAt.getUTCDate() === today.getUTCDate();
 
-    if (postedVideos.includes(videoId)) {
-      console.log('🔁 Video already posted before.');
-      return;
-    }
+  if (!isToday || postedVideos.includes(videoId)) return;
 
-    const title = video.snippet.title;
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    const thumbnail = video.snippet.thumbnails.high.url;
+  const title = video.snippet.title;
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const thumbnail = video.snippet.thumbnails.high.url;
+  const dateString = publishedAt.toLocaleDateString('en-GB');
 
-    const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
-    for (const channelId of channelIds) {
-      try {
-        const ch = await client.channels.fetch(channelId);
-        if (ch && ch.isTextBased()) {
-          await ch.send({
-            content: `just uploaded a video!\n${url}`,
-            embeds: [
-              {
-                author: {
-                  name: 'YouTube',
-                  icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
-                },
-                title: 'CRAZY 亗',
-                description: `[${title}](${url})`,
-                image: { url: thumbnail },
-                thumbnail: {
-                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png',
-                },
-                color: 0xff0000,
-                footer: { text: dateString },
+  const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
+  for (const channelId of channelIds) {
+    try {
+      const ch = await client.channels.fetch(channelId);
+      if (ch && ch.isTextBased()) {
+        await ch.send({
+          content: `just uploaded a video!\n${url}`,
+          embeds: [
+            {
+              author: {
+                name: 'YouTube',
+                icon_url: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
               },
-            ],
-          });
+              title: 'CRAZY 亗',
+              description: `[${title}](${url})`,
+              image: { url: thumbnail },
+              thumbnail: {
+                url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png',
+              },
+              color: 0xff0000,
+              footer: { text: dateString },
+            },
+          ],
+        });
 
-          postedVideos.push(videoId);
-          await savePostedVideos(postedVideos);
-
-          console.log(`✅ Sent update to channel: ${channelId}`);
-        } else {
-          console.error(`❌ Channel ${channelId} is not text-based.`);
-        }
-      } catch (err) {
-        console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
+        postedVideos.push(videoId);
+        await savePostedVideos(postedVideos);
       }
-    }
-  } catch (err) {
-    console.error('⚠️ Failed to fetch latest video:', err.message);
+    } catch (_) {}
   }
 }
 
 async function getChannelId(handle) {
-  try {
+  return await rotateApiKeyAndRetry(async youtube => {
     const res = await youtube.search.list({
       part: ['snippet'],
       q: handle,
@@ -249,33 +239,15 @@ async function getChannelId(handle) {
       maxResults: 1,
     });
     return res.data.items[0]?.snippet.channelId;
-  } catch (err) {
-    console.error('⚠️ Error resolving handle:', err.message);
-    return null;
-  }
+  });
 }
 
 (async () => {
   const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
-
-  if (!channelId) {
-    console.error('❌ Could not find channel.');
-    return;
-  }
-
-  console.log(`✅ Monitoring channel ID: ${channelId}`);
+  if (!channelId) return;
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-
-  if (!uploadsPlaylistId) {
-    console.error('❌ Could not find uploads playlist.');
-    return;
-  }
-
-  console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
-
+  if (!uploadsPlaylistId) return;
   await fetchLatestFromPlaylist(uploadsPlaylistId);
-  setInterval(() => {
-    fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // every 1 minute
-})()
+  setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 10 * 1000); // every 10 seconds
+})();
