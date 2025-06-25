@@ -119,36 +119,38 @@ client.once('ready', async () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-// ====== YouTube Upload Checker with API Key Rotation ======
+// ====== YouTube Upload Checker (With API Key Rotation) ======
 const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
-
 try {
   if (fs.existsSync(POSTED_FILE)) {
     postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
   }
 } catch (_) {}
 
-const apiKeys = process.env.YOUTUBE_API_KEYS.split(',');
+const apiKeys = process.env.YOUTUBE_API_KEYS?.split(',') || [process.env.YOUTUBE_API_KEY];
 let currentKeyIndex = 0;
 
 function getYouTubeClient() {
-  return google.youtube({ version: 'v3', auth: apiKeys[currentKeyIndex] });
+  return google.youtube({
+    version: 'v3',
+    auth: apiKeys[currentKeyIndex],
+  });
 }
 
-async function rotateApiKeyAndRetry(task) {
+async function rotateApiKeyAndRun(task) {
   const maxTries = apiKeys.length;
   for (let i = 0; i < maxTries; i++) {
-    const youtube = getYouTubeClient();
     try {
+      const youtube = getYouTubeClient();
       return await task(youtube);
     } catch (err) {
-      const reason = err?.errors?.[0]?.reason;
+      const reason = err?.errors?.[0]?.reason || '';
       if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
         currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-        continue;
+      } else {
+        break;
       }
-      break; // fail silently for other issues
     }
   }
   return null;
@@ -161,17 +163,17 @@ async function savePostedVideos(data) {
 }
 
 async function getUploadsPlaylistId(channelId) {
-  return await rotateApiKeyAndRetry(async youtube => {
+  return await rotateApiKeyAndRun(async youtube => {
     const res = await youtube.channels.list({
       part: ['contentDetails'],
       id: [channelId],
     });
-    return res.data.items[0].contentDetails.relatedPlaylists.uploads;
+    return res.data.items[0]?.contentDetails?.relatedPlaylists?.uploads || null;
   });
 }
 
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
-  const video = await rotateApiKeyAndRetry(async youtube => {
+  const video = await rotateApiKeyAndRun(async youtube => {
     const res = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
@@ -231,14 +233,14 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 }
 
 async function getChannelId(handle) {
-  return await rotateApiKeyAndRetry(async youtube => {
+  return await rotateApiKeyAndRun(async youtube => {
     const res = await youtube.search.list({
       part: ['snippet'],
       q: handle,
       type: ['channel'],
       maxResults: 1,
     });
-    return res.data.items[0]?.snippet.channelId;
+    return res.data.items[0]?.snippet?.channelId || null;
   });
 }
 
