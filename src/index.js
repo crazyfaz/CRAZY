@@ -1,3 +1,5 @@
+// index.js (FULL COPY with UTC date fix)
+
 const express = require('express');
 const { google } = require('googleapis');
 const {
@@ -179,10 +181,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
     const now = new Date();
+
+    // 🔧 Fixed timezone comparison using UTC
     const isToday =
-      publishedAt.getDate() === now.getDate() &&
-      publishedAt.getMonth() === now.getMonth() &&
-      publishedAt.getFullYear() === now.getFullYear();
+      publishedAt.getUTCFullYear() === now.getUTCFullYear() &&
+      publishedAt.getUTCMonth() === now.getUTCMonth() &&
+      publishedAt.getUTCDate() === now.getUTCDate();
 
     if (!isToday) {
       console.log('📅 Video is not from today. Skipping post.');
