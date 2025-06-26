@@ -1,4 +1,4 @@
-// index.js (FULL COPY with UTC date fix)
+// ✅ CRAZY BOT – index.js (Fixed Version: No posted_videos.json, In-Memory Cache)
 
 const express = require('express');
 const { google } = require('googleapis');
@@ -16,20 +16,14 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-  res.send('✅ Crazy Bot is running!');
-});
-
-app.listen(PORT, () => {
-  console.log(`🌐 Web server running on port ${PORT}`);
-});
+app.get('/', (req, res) => res.send('✅ Crazy Bot is running!'));
+app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 });
 
-// ===== Load Slash Commands =====
+// === Slash Commands ===
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -38,13 +32,11 @@ if (fs.existsSync(commandsPath)) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
       client.commands.set(command.data.name, command);
-    } else {
-      console.warn(`⚠️ Invalid command file: ${file}`);
     }
   }
 }
 
-// ===== Load Button Handlers =====
+// === Button Handlers ===
 client.buttons = new Collection();
 const buttonsPath = path.join(__dirname, 'buttons');
 if (fs.existsSync(buttonsPath)) {
@@ -53,13 +45,11 @@ if (fs.existsSync(buttonsPath)) {
     const button = require(path.join(buttonsPath, file));
     if (button.customId && button.execute) {
       client.buttons.set(button.customId, button);
-    } else {
-      console.warn(`⚠️ Invalid button handler: ${file}`);
     }
   }
 }
 
-// ===== Interaction Handler =====
+// === Interaction Handler ===
 client.on(Events.InteractionCreate, async interaction => {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
@@ -79,12 +69,7 @@ client.on(Events.InteractionCreate, async interaction => {
         ? handler.customId === interaction.customId
         : handler.customId instanceof RegExp && handler.customId.test(interaction.customId)
     );
-
-    if (!button) {
-      console.warn(`⚠️ No handler for button ID: ${interaction.customId}`);
-      return;
-    }
-
+    if (!button) return;
     try {
       await button.execute(interaction, client);
     } catch (error) {
@@ -93,60 +78,30 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
-// ===== On Ready & Slash Deployment =====
+// === Deploy Slash Commands ===
 client.once('ready', async () => {
   console.log(`🤖 Logged in as ${client.user.tag}`);
-
   const commands = client.commands.map(cmd => cmd.data.toJSON());
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
   try {
-    console.log('⏳ Refreshing application (/) commands for GUILD...');
-    await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-      { body: commands }
-    );
-
-    console.log('⏳ Deploying global application (/) commands...');
-    await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
-      { body: commands }
-    );
-
-    console.log('✅ Successfully reloaded guild and global (/) commands.');
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+      body: commands,
+    });
+    console.log('✅ Slash commands deployed.');
   } catch (err) {
-    console.error('❌ Failed to reload slash commands:', err);
+    console.error('❌ Failed to deploy slash commands:', err);
   }
 });
 
 client.login(process.env.DISCORD_TOKEN);
 
-// ====== YouTube Upload Checker ======
+// === YOUTUBE CHECKER (NO FILE STORAGE) ===
 const youtube = google.youtube({
   version: 'v3',
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
-let postedVideos = [];
-
-try {
-  if (fs.existsSync(POSTED_FILE)) {
-    postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
-  }
-} catch (err) {
-  console.error('⚠️ Failed to load posted_videos.json:', err.message);
-}
-
-async function savePostedVideos(data) {
-  try {
-    fs.writeFileSync(POSTED_FILE, JSON.stringify(data, null, 2));
-    console.log('💾 Saved videos:', data);
-    console.log('🕒 Saved at:', new Date().toLocaleString());
-  } catch (err) {
-    console.error('⚠️ Failed to save posted_videos.json:', err.message);
-  }
-}
+let postedVideos = new Set();
 
 async function getUploadsPlaylistId(channelId) {
   try {
@@ -164,36 +119,26 @@ async function getUploadsPlaylistId(channelId) {
 async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   try {
     console.log('⏱️ Checking for new video at:', new Date().toLocaleString());
-
     const res = await youtube.playlistItems.list({
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'date',
     });
 
     const video = res.data.items[0];
-    if (!video) {
-      console.log('❌ No video found.');
-      return;
-    }
+    if (!video) return;
 
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
-    const now = new Date();
+    const today = new Date();
 
-    // 🔧 Fixed timezone comparison using UTC
-    const isToday =
-      publishedAt.getUTCFullYear() === now.getUTCFullYear() &&
-      publishedAt.getUTCMonth() === now.getUTCMonth() &&
-      publishedAt.getUTCDate() === now.getUTCDate();
+    if (
+      publishedAt.getDate() !== today.getDate() ||
+      publishedAt.getMonth() !== today.getMonth() ||
+      publishedAt.getFullYear() !== today.getFullYear()
+    ) return;
 
-    if (!isToday) {
-      console.log('📅 Video is not from today. Skipping post.');
-      return;
-    }
-
-    if (postedVideos.includes(videoId)) {
+    if (postedVideos.has(videoId)) {
       console.log('🔁 Video already posted before.');
       return;
     }
@@ -201,9 +146,8 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
-    const dateString = publishedAt.toLocaleDateString('en-GB');
-
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
+
     for (const channelId of channelIds) {
       try {
         const ch = await client.channels.fetch(channelId);
@@ -219,26 +163,20 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
                 title: 'CRAZY 亗',
                 description: `[${title}](${url})`,
                 image: { url: thumbnail },
-                thumbnail: {
-                  url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png',
-                },
+                thumbnail: { url: 'https://i.postimg.cc/t48vhgTw/Untitled39-20250616210053.png' },
                 color: 0xff0000,
-                footer: { text: dateString },
+                footer: { text: new Date().toLocaleDateString('en-GB') },
               },
             ],
           });
-
-          postedVideos.push(videoId);
-          await savePostedVideos(postedVideos);
-
           console.log(`✅ Sent update to channel: ${channelId}`);
-        } else {
-          console.error(`❌ Channel ${channelId} is not text-based.`);
         }
       } catch (err) {
         console.error(`❌ Failed to send to channel ${channelId}: ${err.message}`);
       }
     }
+
+    postedVideos.add(videoId);
   } catch (err) {
     console.error('⚠️ Failed to fetch latest video:', err.message);
   }
@@ -262,24 +200,13 @@ async function getChannelId(handle) {
 (async () => {
   const handle = '@crazyechoo';
   const channelId = await getChannelId(handle.replace('@', ''));
-
-  if (!channelId) {
-    console.error('❌ Could not find channel.');
-    return;
-  }
-
+  if (!channelId) return;
   console.log(`✅ Monitoring channel ID: ${channelId}`);
+
   const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
-
-  if (!uploadsPlaylistId) {
-    console.error('❌ Could not find uploads playlist.');
-    return;
-  }
-
+  if (!uploadsPlaylistId) return;
   console.log(`✅ Uploads playlist ID: ${uploadsPlaylistId}`);
 
   await fetchLatestFromPlaylist(uploadsPlaylistId);
-  setInterval(() => {
-    fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 60 * 1000); // every 1 minute
-})()
+  setInterval(() => fetchLatestFromPlaylist(uploadsPlaylistId), 10 * 1000); // every 10 seconds
+})();
