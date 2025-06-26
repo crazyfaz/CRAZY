@@ -178,15 +178,27 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
-    const today = new Date();
-    const dateString = publishedAt.toLocaleDateString('en-GB');
+    const now = new Date();
 
-    if (
-      publishedAt.getDate() !== today.getDate() ||
-      publishedAt.getMonth() !== today.getMonth() ||
-      publishedAt.getFullYear() !== today.getFullYear()
-    ) {
-      console.log('📅 Video is not from today. Skipping post.');
+    // 🌐 Deep Diagnostic Logs
+    console.log('🔎 Detected video:');
+    console.log('   📺 Title:', video.snippet.title);
+    console.log('   🆔 Video ID:', videoId);
+    console.log('   🕒 Published At (Raw):', video.snippet.publishedAt);
+    console.log('   🕒 Published At (Local):', publishedAt.toLocaleString());
+    console.log('   🕒 Current Time (Local):', now.toLocaleString());
+    console.log('   📅 Comparison =>');
+    console.log('      Date:', publishedAt.getDate(), 'vs', now.getDate());
+    console.log('      Month:', publishedAt.getMonth(), 'vs', now.getMonth());
+    console.log('      Year:', publishedAt.getFullYear(), 'vs', now.getFullYear());
+
+    const isToday =
+      publishedAt.getDate() === now.getDate() &&
+      publishedAt.getMonth() === now.getMonth() &&
+      publishedAt.getFullYear() === now.getFullYear();
+
+    if (!isToday) {
+      console.log('📅 ❌ Video is NOT from today. Skipping post.');
       return;
     }
 
@@ -198,6 +210,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
+    const dateString = publishedAt.toLocaleDateString('en-GB');
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
     for (const channelId of channelIds) {
