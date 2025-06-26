@@ -167,7 +167,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
       part: ['snippet'],
       playlistId: uploadsPlaylistId,
       maxResults: 1,
-      order: 'desc',
+      order: 'date',
     });
 
     const video = res.data.items[0];
@@ -178,14 +178,13 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
 
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
-    const today = new Date();
-    const dateString = publishedAt.toLocaleDateString('en-GB');
+    const now = new Date();
+    const isToday =
+      publishedAt.getDate() === now.getDate() &&
+      publishedAt.getMonth() === now.getMonth() &&
+      publishedAt.getFullYear() === now.getFullYear();
 
-    if (
-      publishedAt.getDate() !== today.getDate() ||
-      publishedAt.getMonth() !== today.getMonth() ||
-      publishedAt.getFullYear() !== today.getFullYear()
-    ) {
+    if (!isToday) {
       console.log('📅 Video is not from today. Skipping post.');
       return;
     }
@@ -198,6 +197,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const title = video.snippet.title;
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail = video.snippet.thumbnails.high.url;
+    const dateString = publishedAt.toLocaleDateString('en-GB');
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
     for (const channelId of channelIds) {
@@ -278,4 +278,4 @@ async function getChannelId(handle) {
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
   }, 60 * 1000); // every 1 minute
-})();
+})()
