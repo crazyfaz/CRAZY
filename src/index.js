@@ -253,33 +253,12 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   }
 }
 
-async function getChannelId(handle) {
-  try {
-    const res = await youtube.search.list({
-      part: ['snippet'],
-      q: handle,
-      type: ['channel'],
-      maxResults: 1,
-    });
-    return res.data.items[0]?.snippet.channelId;
-  } catch (err) {
-    console.error('⚠️ Error resolving handle:', err.message);
-    return null;
-  }
-}
-
+// ✅ Directly use your real channel ID
 (async () => {
-  const handle = '@crazyechoo';
-  const channelId = await getChannelId(handle.replace('@', ''));
-
-  if (!channelId) {
-    console.error('❌ Could not find channel.');
-    return;
-  }
-
+  const channelId = 'UCmU4vBGV9FRwvLE0jOUiGrg';
   console.log(`✅ Monitoring channel ID: ${channelId}`);
-  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
 
+  const uploadsPlaylistId = await getUploadsPlaylistId(channelId);
   if (!uploadsPlaylistId) {
     console.error('❌ Could not find uploads playlist.');
     return;
