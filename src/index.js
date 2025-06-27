@@ -8,9 +8,25 @@ const {
   REST,
   Routes,
 } = require('discord.js');
-const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+// ✅ Firebase Setup
+const { initializeApp } = require('firebase/app');
+const { getDatabase, ref, get, set } = require('firebase/database');
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLaXhM__YYJuopSdbIGRpbDSmLKtE0Fws",
+  authDomain: "crazy-bot-db.firebaseapp.com",
+  databaseURL: "https://crazy-bot-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "crazy-bot-db",
+  storageBucket: "crazy-bot-db.firebasestorage.app",
+  messagingSenderId: "658743489805",
+  appId: "1:658743489805:web:2beb79f7e28ff255cdac44"
+};
+
+const appFB = initializeApp(firebaseConfig);
+const db = getDatabase(appFB);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -125,24 +141,29 @@ const youtube = google.youtube({
   auth: process.env.YOUTUBE_API_KEY,
 });
 
-const POSTED_FILE = path.join(__dirname, 'posted_videos.json');
 let postedVideos = [];
 
-try {
-  if (fs.existsSync(POSTED_FILE)) {
-    postedVideos = JSON.parse(fs.readFileSync(POSTED_FILE, 'utf8'));
+async function loadPostedVideos() {
+  try {
+    const snapshot = await get(ref(db, 'videos'));
+    if (snapshot.exists()) {
+      postedVideos = snapshot.val() || [];
+    } else {
+      postedVideos = [];
+    }
+    console.log('📥 Loaded posted videos from Firebase:', postedVideos);
+  } catch (err) {
+    console.error('⚠️ Failed to load posted videos from Firebase:', err.message);
+    postedVideos = [];
   }
-} catch (err) {
-  console.error('⚠️ Failed to load posted_videos.json:', err.message);
 }
 
 async function savePostedVideos(data) {
   try {
-    fs.writeFileSync(POSTED_FILE, JSON.stringify(data, null, 2));
-    console.log('💾 Saved videos:', data);
-    console.log('🕒 Saved at:', new Date().toLocaleString());
+    await set(ref(db, 'videos'), data);
+    console.log('💾 Saved posted videos to Firebase.');
   } catch (err) {
-    console.error('⚠️ Failed to save posted_videos.json:', err.message);
+    console.error('⚠️ Failed to save posted videos to Firebase:', err.message);
   }
 }
 
@@ -179,18 +200,6 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const videoId = video.snippet.resourceId.videoId;
     const publishedAt = new Date(video.snippet.publishedAt);
     const now = new Date();
-
-    // 🌐 Deep Diagnostic Logs
-    console.log('🔎 Detected video:');
-    console.log('   📺 Title:', video.snippet.title);
-    console.log('   🆔 Video ID:', videoId);
-    console.log('   🕒 Published At (Raw):', video.snippet.publishedAt);
-    console.log('   🕒 Published At (Local):', publishedAt.toLocaleString());
-    console.log('   🕒 Current Time (Local):', now.toLocaleString());
-    console.log('   📅 Comparison =>');
-    console.log('      Date:', publishedAt.getDate(), 'vs', now.getDate());
-    console.log('      Month:', publishedAt.getMonth(), 'vs', now.getMonth());
-    console.log('      Year:', publishedAt.getFullYear(), 'vs', now.getFullYear());
 
     const isToday =
       publishedAt.getDate() === now.getDate() &&
@@ -253,8 +262,8 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   }
 }
 
-// ✅ Directly use your real channel ID
 (async () => {
+  await loadPostedVideos();
   const channelId = 'UCmU4vBGV9FRwvLE0jOUiGrg';
   console.log(`✅ Monitoring channel ID: ${channelId}`);
 
@@ -269,5 +278,5 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
   await fetchLatestFromPlaylist(uploadsPlaylistId);
   setInterval(() => {
     fetchLatestFromPlaylist(uploadsPlaylistId);
-  }, 10 * 1000); // every 10 seconds
+  }, 10 * 1000);
 })();
