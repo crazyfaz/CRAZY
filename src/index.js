@@ -8,6 +8,7 @@ const {
   REST,
   Routes,
 } = require('discord.js');
+const fs = require('fs'); // ✅ Added this line
 const path = require('path');
 require('dotenv').config();
 
