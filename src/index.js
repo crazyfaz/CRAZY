@@ -221,7 +221,7 @@ async function fetchLatestFromPlaylist(uploadsPlaylistId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const thumbnail =
       video.snippet.thumbnails?.high?.url ||
-      `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; // ✅ fallback
     const dateString = publishedAt.toLocaleDateString('en-GB');
 
     const channelIds = process.env.DISCORD_CHANNEL_IDS.split(',').map(id => id.trim());
