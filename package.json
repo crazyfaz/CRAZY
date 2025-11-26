@@ -1,8 +1,7 @@
-{
-  "name": "crazy-discord-bot",
+src "name": "crazy-discord-bot",
   "version": "1.0.3",
   "description": "A Discord bot that announces YouTube videos, fetches weather, suggests movies, and plays crazy games.",
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
     "start": "node src/index.js"
   },
